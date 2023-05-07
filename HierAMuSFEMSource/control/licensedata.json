@@ -1,0 +1,49 @@
+{
+    "path" : "./HierAMuSFEMSource/",
+    "authors": {
+        "SCK": {
+            "name": "Simon Klarmann",
+            "email": "simon.klarmann@gmail.com"
+        },
+        "SK": {
+            "name": "Sven Klinkel",
+            "email": "klinkel@lbb.rwth-aachen.de"
+        },
+        "BS": {
+            "name": "Bjorn Sauren",
+            "email": "sauren@lbb.rwth-aachen.de"
+        }
+    },
+    "files": {
+        "BinaryWrite.h": [
+            {
+                "author": "SCK",
+                "year": "2022"
+            },
+            {
+                "author": "SCK",
+                "year": "2023"
+            }
+        ],
+        "FEMExceptions.cpp": [
+            {
+                "author": "SCK",
+                "year": "2016"
+            },
+            {
+                "author": "SCK",
+                "year": "2023"
+            }
+        ],
+        "FEMExceptions.h": [
+            {
+                "author": "SCK",
+                "year": "2016"
+            },
+            {
+                "author": "SCK",
+                "year": "2023"
+            }
+        ]
+    }
+}

@@ -1,0 +1,340 @@
+#LyX 2.3 created this file. For more info see http://www.lyx.org/
+\lyxformat 544
+\begin_document
+\begin_header
+\save_transient_properties true
+\origin unavailable
+\textclass article
+\use_default_options true
+\maintain_unincluded_children false
+\language english
+\language_package default
+\inputencoding auto
+\fontencoding global
+\font_roman "default" "default"
+\font_sans "default" "default"
+\font_typewriter "default" "default"
+\font_math "auto" "auto"
+\font_default_family default
+\use_non_tex_fonts false
+\font_sc false
+\font_osf false
+\font_sf_scale 100 100
+\font_tt_scale 100 100
+\use_microtype false
+\use_dash_ligatures true
+\graphics default
+\default_output_format default
+\output_sync 0
+\bibtex_command default
+\index_command default
+\paperfontsize default
+\use_hyperref false
+\papersize default
+\use_geometry false
+\use_package amsmath 1
+\use_package amssymb 1
+\use_package cancel 1
+\use_package esint 1
+\use_package mathdots 1
+\use_package mathtools 1
+\use_package mhchem 1
+\use_package stackrel 1
+\use_package stmaryrd 1
+\use_package undertilde 1
+\cite_engine basic
+\cite_engine_type default
+\use_bibtopic false
+\use_indices false
+\paperorientation portrait
+\suppress_date false
+\justification true
+\use_refstyle 1
+\use_minted 0
+\index Index
+\shortcut idx
+\color #008000
+\end_index
+\secnumdepth 3
+\tocdepth 3
+\paragraph_separation indent
+\paragraph_indentation default
+\is_math_indent 0
+\math_numbering_side default
+\quotes_style english
+\dynamic_quotes 0
+\papercolumns 1
+\papersides 1
+\paperpagestyle default
+\tracking_changes false
+\output_changes false
+\html_math_output 0
+\html_css_as_file 0
+\html_be_strict false
+\end_header
+
+\begin_body
+
+\begin_layout Section
+Constraints
+\end_layout
+
+\begin_layout Subsection
+Constraint equation
+\end_layout
+
+\begin_layout Standard
+At first we formulate a simple constraint in the sense that there is a linear
+ relation between two or multiple degrees of freedom.
+ We state
+\begin_inset Formula 
+\begin{equation}
+\mathbf{V}_{c}=\mathbf{A}\cdot\mathbf{V}_{b}+\mathbf{b}.
+\end{equation}
+
+\end_inset
+
+
+\end_layout
+
+\begin_layout Standard
+Depending on the matrix 
+\begin_inset Formula $\mathbf{A}$
+\end_inset
+
+, which is a 
+\begin_inset Formula $m\times n$
+\end_inset
+
+-matrix with 
+\begin_inset Formula $m<n$
+\end_inset
+
+, different amounts of degrees of freedom can be coupled.
+ Performing the variation and linearization of the constraint leads to
+\begin_inset Formula 
+\begin{equation}
+\delta\mathbf{V}_{c}=\mathbf{A}\cdot\delta\mathbf{V}_{b},\qquad\Delta\mathbf{V}_{c}=\mathbf{A}\cdot\Delta\mathbf{V}_{b}.
+\end{equation}
+
+\end_inset
+
+
+\end_layout
+
+\begin_layout Section
+General Equation System
+\end_layout
+
+\begin_layout Standard
+The equation system with fixed and free degrees of freedom can be written
+ as
+\begin_inset Formula 
+\begin{equation}
+\left[\begin{array}{c}
+\delta\mathbf{V}_{a}\\
+\delta\mathbf{V}_{b}\\
+\delta\mathbf{V}_{c}
+\end{array}\right]^{T}\left[\begin{array}{ccc}
+\mathbf{K}_{aa} & \mathbf{K}_{ab} & \mathbf{K}_{ac}\\
+\mathbf{K}_{ba} & \mathbf{K}_{bb} & \mathbf{K}_{bc}\\
+\mathbf{K}_{ca} & \mathbf{K}_{cb} & \mathbf{K}_{cc}
+\end{array}\right]\left[\begin{array}{c}
+\Delta\mathbf{V}_{a}\\
+\Delta\mathbf{V}_{b}\\
+\Delta\mathbf{V}_{c}
+\end{array}\right]=\left[\begin{array}{c}
+\delta\mathbf{V}_{a}\\
+\delta\mathbf{V}_{b}\\
+\delta\mathbf{V}_{c}
+\end{array}\right]^{T}\left[\begin{array}{c}
+\mathbf{F}_{a}\\
+\mathbf{F}_{b}\\
+\mathbf{F}_{c}
+\end{array}\right].
+\end{equation}
+
+\end_inset
+
+
+\end_layout
+
+\begin_layout Standard
+In a next steps, we insert the constraints in the equation system
+\begin_inset Formula 
+\begin{equation}
+\left[\begin{array}{c}
+\delta\mathbf{V}_{a}\\
+\delta\mathbf{V}_{b}\\
+\mathbf{A}\cdot\delta\mathbf{V}_{b}
+\end{array}\right]^{T}\left[\begin{array}{ccc}
+\mathbf{K}_{aa} & \mathbf{K}_{ab} & \mathbf{K}_{ac}\\
+\mathbf{K}_{ba} & \mathbf{K}_{bb} & \mathbf{K}_{bc}\\
+\mathbf{K}_{ca} & \mathbf{K}_{cb} & \mathbf{K}_{cc}
+\end{array}\right]\left[\begin{array}{c}
+\Delta\mathbf{V}_{a}\\
+\Delta\mathbf{V}_{b}\\
+\mathbf{A}\cdot\Delta\mathbf{V}_{b}+\Delta\mathbf{b}
+\end{array}\right]=\left[\begin{array}{c}
+\delta\mathbf{V}_{a}\\
+\delta\mathbf{V}_{b}\\
+\mathbf{A}\cdot\delta\mathbf{V}_{b}
+\end{array}\right]^{T}\left[\begin{array}{c}
+\mathbf{F}_{a}\\
+\mathbf{F}_{b}\\
+\mathbf{F}_{c}
+\end{array}\right].
+\end{equation}
+
+\end_inset
+
+
+\end_layout
+
+\begin_layout Standard
+Rearranging the equation system leads to
+\begin_inset Formula 
+\begin{equation}
+\left[\begin{array}{c}
+\delta\mathbf{V}_{a}\\
+\delta\mathbf{V}_{b}\\
+\delta\mathbf{V}_{b}
+\end{array}\right]^{T}\left[\begin{array}{ccc}
+\mathbf{K}_{aa} & \mathbf{K}_{ab} & \mathbf{K}_{ac}\mathbf{A}\\
+\mathbf{K}_{ba} & \mathbf{K}_{bb} & \mathbf{K}_{bc}\mathbf{A}\\
+\mathbf{A}^{T}\mathbf{K}_{ca} & \mathbf{A}^{T}\mathbf{K}_{cb} & \mathbf{A}^{T}\mathbf{K}_{cc}\mathbf{A}
+\end{array}\right]\left[\begin{array}{c}
+\Delta\mathbf{V}_{a}\\
+\Delta\mathbf{V}_{b}\\
+\Delta\mathbf{V}_{b}
+\end{array}\right]=\left[\begin{array}{c}
+\delta\mathbf{V}_{a}\\
+\delta\mathbf{V}_{b}\\
+\delta\mathbf{V}_{b}
+\end{array}\right]^{T}\left[\begin{array}{c}
+\mathbf{F}_{a}\\
+\mathbf{F}_{b}\\
+\mathbf{A}^{T}\mathbf{F}_{c}
+\end{array}\right]-\left[\begin{array}{c}
+\delta\mathbf{V}_{a}\\
+\delta\mathbf{V}_{b}\\
+\delta\mathbf{V}_{b}
+\end{array}\right]^{T}\left[\begin{array}{c}
+\mathbf{K}_{ac}\\
+\mathbf{K}_{bc}\\
+\mathbf{A}^{T}\mathbf{K}_{cc}
+\end{array}\right]\Delta\mathbf{b}.
+\end{equation}
+
+\end_inset
+
+This lead to the equation system 
+\begin_inset Formula 
+\begin{equation}
+\left[\begin{array}{c}
+\delta\mathbf{V}_{a}\\
+\delta\mathbf{V}_{b}
+\end{array}\right]^{T}\left[\begin{array}{cc}
+\mathbf{K}_{aa} & \mathbf{K}_{ab}+\mathbf{K}_{ac}\mathbf{A}\\
+\mathbf{K}_{ba}+\mathbf{A}^{T}\mathbf{K}_{ca} & \mathbf{K}_{bb}+\mathbf{A}^{T}\mathbf{K}_{cb}+\mathbf{K}_{bc}\mathbf{A}+\mathbf{A}^{T}\mathbf{K}_{cc}\mathbf{A}
+\end{array}\right]\left[\begin{array}{c}
+\Delta\mathbf{V}_{a}\\
+\Delta\mathbf{V}_{b}
+\end{array}\right]=\left[\begin{array}{c}
+\delta\mathbf{V}_{a}\\
+\delta\mathbf{V}_{b}
+\end{array}\right]^{T}\left[\begin{array}{c}
+\mathbf{F}_{a}\\
+\mathbf{F}_{b}+\mathbf{A}^{T}\mathbf{F}_{c}
+\end{array}\right]-\left[\begin{array}{c}
+\delta\mathbf{V}_{a}\\
+\delta\mathbf{V}_{b}
+\end{array}\right]^{T}\left[\begin{array}{c}
+\mathbf{K}_{ac}\\
+\mathbf{K}_{bc}+\mathbf{A}^{T}\mathbf{K}_{cc}
+\end{array}\right]\Delta\mathbf{b}.
+\end{equation}
+
+\end_inset
+
+
+\end_layout
+
+\begin_layout Section
+Algorithmic treatment
+\end_layout
+
+\begin_layout Standard
+In a first step, all degrees of freedom (dofs) with boundary conditions
+ are set to inactive and all dofs with constraints, are set to constraint.
+ Both, the inactive and constaint dofs, are treated the same way in the
+ sense that they get their own equation numbers.
+ After assembly of the equation system this leads to
+\begin_inset Formula 
+\begin{equation}
+\left[\begin{array}{c}
+\delta\mathbf{V}_{a}\\
+\delta\mathbf{V}_{b}
+\end{array}\right]^{T}\left[\begin{array}{cc}
+\mathbf{K}_{aa} & \mathbf{K}_{ab}\\
+\mathbf{K}_{ba} & \mathbf{K}_{bb}
+\end{array}\right]\left[\begin{array}{c}
+\Delta\mathbf{V}_{a}\\
+\Delta\mathbf{V}_{b}
+\end{array}\right]=\left[\begin{array}{c}
+\delta\mathbf{V}_{a}\\
+\delta\mathbf{V}_{b}
+\end{array}\right]^{T}\left[\begin{array}{c}
+\mathbf{F}_{a}\\
+\mathbf{F}_{b}
+\end{array}\right].\label{eq:alg:eqsysteminit}
+\end{equation}
+
+\end_inset
+
+
+\end_layout
+
+\begin_layout Standard
+In a next step, the specified displacement increments 
+\begin_inset Formula $\Delta\mathbf{V}_{b}$
+\end_inset
+
+ are calculated under the consideration of the constraint equations an brought
+ to the right hand side
+\begin_inset Formula 
+\begin{equation}
+\left[\begin{array}{c}
+\delta\mathbf{V}_{a}\\
+\delta\mathbf{V}_{b}
+\end{array}\right]^{T}\left[\begin{array}{cc}
+\mathbf{K}_{aa} & \mathbf{K}_{ab}\\
+\mathbf{K}_{ba} & \mathbf{K}_{bb}
+\end{array}\right]\left[\begin{array}{c}
+\Delta\mathbf{V}_{a}\\
+\Delta\mathbf{V}_{b}
+\end{array}\right]=\left[\begin{array}{c}
+\delta\mathbf{V}_{a}\\
+\delta\mathbf{V}_{b}
+\end{array}\right]^{T}\left[\begin{array}{c}
+\mathbf{F}_{a}\\
+\mathbf{F}_{b}
+\end{array}\right]-\left[\begin{array}{c}
+\delta\mathbf{V}_{a}\\
+\delta\mathbf{V}_{b}
+\end{array}\right]^{T}\left[\begin{array}{cc}
+\mathbf{0} & \mathbf{K}_{ab}\\
+\mathbf{0} & \mathbf{0}
+\end{array}\right]\left[\begin{array}{c}
+\mathbf{0}\\
+\Delta\mathbf{V}_{b}
+\end{array}\right].\label{eq:alg:eqsystemdispbc}
+\end{equation}
+
+\end_inset
+
+
+\end_layout
+
+\end_body
+\end_document

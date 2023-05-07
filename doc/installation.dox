@@ -1,0 +1,42 @@
+/*!
+@page pageinstallinstructions Installation instructions
+
+@tableofcontents
+
+@section sectioninstallenvironment Needed environment variables
+
+Currently the project is managed by <a href="https://cmake.org/">CMake</a>.
+At first, some steps are required to build the project:
+ -# The environment variable <b>CPPFEM</b> must be set, pointing to a directory where the project will be installed.
+ -# The variable <b>CPPFEM</b> must be added to the <b>PATH</b> and <b>PYTHONPATH</b> variables.
+
+After setting the environment variables, <a href="https://cmake.org/">CMake</a> can configure the project.
+
+@section sectioninstallrequiredsoftware Required software
+The program relies on third-party libraries.
+On a minimal configuration, only the <a href="https://eigen.tuxfamily.org">Eigen Library</a> is required.
+CMake tries to find the Eigen3_DIR library.
+If CMake is not successful to find the Eigen3_DIR, it will automatically download version 3.4.0 of the Eigen library and install it in a path where it can find it.
+
+If you want to perform Eigenvalue computations on the global stiffness matrix, the <a href="https://spectralib.org/">Spectra Library</a> is used. If CMake cannot find this library on your system, it will download and install it automatically in a path where it can find it.
+
+For post-processing, <a href="https://www.paraview.org/">ParaView</a> is used. CMake automatically downloads the Paraview sources, configures, compiles, and installs them in a directory in which it can find them.
+
+
+Currently, the program is controlled via <a href="https://www.python.org/">Python</a>.
+Therefore, it is required that <a href="https://www.python.org/">Python</a> and the Python Library <a href="https://pybind11.readthedocs.io/">pybind11</a> is installed on the system.
+Compared to the other libraries, this has to be done manually.
+
+
+
+@section sectioninstallecmakeconfiguration CMake configuration
+After the environment variables are set accroding to @ref sectioninstallenvironment, the project can be configured by <a href="https://cmake.org/">CMake</a>.
+
+@section sectioninstallemainsteps Main steps for the installation
+The main steps to use the program are:
+  -# Set up the environment variables according to @ref sectioninstallenvironment
+  -# Install <a href="https://www.python.org/">Python</a> with package <a href="https://pybind11.readthedocs.io/">pybind11</a>
+  -# Remaining required libraries will be installed by CMake.
+
+*/
+

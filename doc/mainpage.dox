@@ -1,0 +1,26 @@
+/*! 
+@mainpage A C++ Finite Element Project with Python-Bindings
+
+@tableofcontents
+
+@section reqsoft Required third party software
+The program depends on third-party packages.
+The minimal requirement is
+ - <a href="https://eigen.tuxfamily.org">Eigen Library</a> used for matrix operations.
+
+Further optional requirements are
+ - <a href="https://spectralib.org/">Spectra Library</a> is used for eigenvalue computations of the global stiffness matrix.
+ - <a href="https://www.paraview.org/">Paraview</a> is used for post-processing.
+ - <a href="https://www.python.org/">Python</a> is required if the Python bindings should be used.
+ - <a href="https://pybind11.readthedocs.io/">pybind11</a> is used to generate the Python bindings.
+
+
+@section helpsection Help and Documentation
+For a guide to build and install the program see: @ref pageinstallinstructions "Installation instructions"
+
+For a guide on how-to perform finite element analyses see: @ref page_howtocompute "How perform finite element analyses"
+
+
+
+*/
+

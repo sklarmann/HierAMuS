@@ -1,0 +1,26 @@
+/*!
+@page page_howtocompute How perform finite element analyses
+
+@section section_pythoninterfacecomputation Python Interface
+The easiest way to use the program is via Python. 
+This way, you can script your FEM model model including the whole calculation steps.
+The main steps needed to be performed in order to do a finite element analysis are:
+-# Include the HierAMuS module in your Python script.
+-# Create a FEM model object of type HierAMuS.FEMPy
+-# Add the geometry elements.
+-# Tell the program which geometry elements are finite elements.
+-# Add the required finite element and material formulations to the model.
+-# 
+
+@code
+# Importing the Python module of the FEM Code
+import HierAMuS
+# Creating the object of the FEM Program
+fesys = HierAMuS.FEMPy(file_path, file_name)
+@endcode
+ - file_path is the path where all the ouput of the code will be stored
+ - file_name is the name of the log-file
+
+
+
+*/

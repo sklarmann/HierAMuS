@@ -1,0 +1,15 @@
+# Copyright 2023 Simon Klarmann <simon.klarmann@gmail.com>
+#
+# SPDX-License-Identifier: BSD-3-Clause
+
+[build-system]
+requires = ["setuptools"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "HierAMuS"
+version = "0.1"
+dependencies = ["gmsh","matplotlib","numpy"]
+
+[tool.setuptools]
+packages = ["HierAMuS"]

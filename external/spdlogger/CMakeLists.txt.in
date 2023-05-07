@@ -1,0 +1,16 @@
+cmake_minimum_required(VERSION 3.0)
+project(spectra-download NONE)
+
+include(ExternalProject)
+ExternalProject_Add(spectra
+    GIT_REPOSITORY    https://github.com/gabime/spdlog
+    GIT_TAG           v1.x
+    SOURCE_DIR        "${CMAKE_BINARY_DIR}/spdlogger-src"
+    BINARY_DIR        "${CMAKE_BINARY_DIR}/spdlogger-build"
+    INSTALL_DIR       "${STAGED_INSTALL_PREFIX}"
+  CMAKE_ARGS
+    -DCMAKE_INSTALL_PREFIX=${STAGED_INSTALL_PREFIX}
+    -DCMAKE_POSITION_INDEPENDENT_CODE=ON
+    UPDATE_COMMAND    ""
+    TEST_COMMAND      ""
+)

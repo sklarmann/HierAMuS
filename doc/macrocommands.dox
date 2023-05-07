@@ -1,0 +1,86 @@
+/*!
+@page macrocommands Macro Commands of the program
+
+The program and calculation is controlled by so called macro commands.
+They are represented by a Python class @ref HierAMuS.macroCommands.macroCommands.macroCommands "macroCommands".
+
+Before the @ref HierAMuS.macroCommands.macroCommands.macroCommands "macroCommands" can be used, an object of the main program needs to be created:
+@code
+# Importing the library
+import HierAMuS
+
+# Creating the FE object
+fesys = HierAMuS.FEMPy(path_name,file_name)
+@endcode
+ - fesys is the object containing all data of your current FE-model
+ - file_path is the path where all the ouput of the code will be stored
+ - file_name is the name of the log-file
+
+@section macroCommandsGet Getting the object
+In order to use the @ref HierAMuS.macroCommands.macroCommands.macroCommands "macroCommands" object, it needs to be connected to the current FE-model.
+Therefore, you need to request it from your current FE-model object of type HierAMuS.FEMPy.
+This can be done via
+@code
+macroCMDs = fesys.getMacroCommands()
+@endcode
+
+If you request the macroCMDs object from the fesys object, the two objects are connected.
+
+
+
+
+@section macroCommandsLogLevel Setting the output log-level
+The command @ref HierAMuS.macroCommands.macroCommands.macroCommands.setLogLevel "setLogLevel" can be used to set the output log-level of the program.
+@code
+macroCMDs = fesys.getMacroCommands()
+macroCMDs.setLogLevel(print-level, write-level)
+@endcode
+ - print-level controls the output-level in the console.
+ - write-level controls the output-level in the output-file.
+
+The levels can be set with:
+ - fesys.NoLog(): All output is suppressed.
+ - fesys.BasicLog(): Basic Log with information on the calculation.
+ - fesys.FullLog(): Full Log, same as BasicLog but with additional information on the internal data, more like a Debug output.
+
+
+
+
+@section macroCommandsPrintInfo Print information
+The command @ref HierAMuS.macroCommands.macroCommands.macroCommands.printInfo "printInfo" triggers the ouptut of the internal data.
+The resulting output depends on the current @ref macroCommandsLogLevel "log-level" of the FE-object.
+It is triggered with
+@code
+macroCMDs = fesys.getMacroCommands()
+macroCMDs.printInfo()
+@endcode
+
+
+
+
+@section macroCommandsPropFunc Set proportional load function
+With the command @ref HierAMuS.macroCommands.macroCommands.macroCommands.setPropFunction "setPropFunction", the proportional load function can be set which is associated with the applied loads.
+The associated code is
+@code
+macroCMDs.setPropFunction(number=1,function=lambda x: x**2,tmin=0,tmax=100)
+@endcode
+ - number: Is the prop-function number. Loads are associated to that number.
+ - function: The function which depends on the current time value. It is a Python lambda function. In the example the prop function is \f$f(t) = t^2\f$, if t is the current time.
+ - tmin: Is the minimal time after which the function is valid.
+ - tmax: Is the maximum time until the function is valid.
+
+The prop-function \f$ f(t)\f$ is valid in the intervall \f$ t_{min} \leq t \leq t_{max} \f$.
+
+
+
+@section macroCommandsSetDt Set time increment dt
+As the loads are controlled by a function \f$f(t)\f$ which depends on the current time, the time is discretized as well.
+To advance in time, it is increased by dt with the macro command @ref HierAMuS.macroCommands.macroCommands.macroCommands.timeincr "timeincr".
+In order to do this, the value dt must be set first, using
+@code
+macroCMDs.setDt(dt=0.1)
+@endcode
+ - dt: Is the dt value which will be used to increase the time when triggering @ref HierAMuS.macroCommands.macroCommands.macroCommands.timeincr "timeincr"
+
+*/
+

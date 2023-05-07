@@ -1,0 +1,19 @@
+from setuptools import setup
+
+setup(name='HierAMuS',
+      version='1.0',
+      description='bla bla',
+      author='Simon Klarmann',
+      author_email='',
+      url='',
+      packages=['HierAMuS',
+                'HierAMuS/macroCommands',
+                'HierAMuS/meshCommands',
+                'HierAMuS/plotCommands',
+                'HierAMuS/plot',
+                'HierAMuS/geomBuilder',
+                'HierAMuS/geomBuilder/geomElements'],
+      package_dir={'HierAMuS' : 'HierAMuS'},
+      package_data={'HierAMuS': ['*.dll','*.pyd']},
+      install_requires=['gmsh', 'numpy', 'matplotlib'],
+     )

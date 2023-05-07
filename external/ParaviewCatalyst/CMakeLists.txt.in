@@ -1,0 +1,19 @@
+cmake_minimum_required(VERSION 3.0)
+project(eigen-download NONE)
+
+include(ExternalProject)
+ExternalProject_Add(Paraview
+    GIT_REPOSITORY    https://gitlab.kitware.com/paraview/paraview.git
+    GIT_TAG           v5.10.1
+    # URL               https://www.paraview.org/paraview-downloads/download.php?submit=Download&version=v5.10&type=source&os=Sources&downloadFile=ParaView-v5.10.1.tar.gz
+    SOURCE_DIR        "${CMAKE_BINARY_DIR}/paraview-src"
+    BINARY_DIR        "${CMAKE_BINARY_DIR}/paraview-build"
+    INSTALL_DIR       "${STAGED_INSTALL_PREFIX}"
+  CMAKE_ARGS
+    -DCMAKE_INSTALL_PREFIX=${STAGED_INSTALL_PREFIX}
+    -DCMAKE_BUILD_TYPE=Release
+    -DPARAVIEW_BUILD_EDITION=CATALYST_RENDERING
+    -DPARAVIEW_BUILD_SHARED_LIBS=OFF
+    UPDATE_COMMAND    ""
+    TEST_COMMAND      ""
+)
