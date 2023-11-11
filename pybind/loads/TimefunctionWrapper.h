@@ -7,7 +7,7 @@
 
 namespace py = pybind11;
 
-#include "loads/Timefunction.h"
+#include "Timefunction.h"
 
 namespace HierAMuS {
 //class PyInfoData : public InfoData {

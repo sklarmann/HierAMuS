@@ -6,24 +6,26 @@
 
 #pragma once
 
-#include <forwarddeclaration.h>
 
 #include <Eigen/Dense>
-#include <elementFormulations/GenericElementFormulation.h>
+#include "elementFormulations/GenericElementFormulationInterface.h"
 
 namespace HierAMuS::Elementformulations {
 
-class EL101_Bernoulli2D : public GenericElementFormulation {
+class EL101_Bernoulli2D : public GenericElementFormulationInterface<FiniteElement::Edge> {
 public:
   explicit EL101_Bernoulli2D(PointerCollection *ptrCol);
   ~EL101_Bernoulli2D() override;
   void readData(PointerCollection &pointers, ParameterList &list) override;
-  void setDegreesOfFreedom(PointerCollection& pointers, FiniteElement::GenericFiniteElement *elem) override;
+  void setDegreesOfFreedom(PointerCollection &pointers,
+                           FiniteElement::Edge &elem) override;
+  void AdditionalOperations(PointerCollection &pointers,
+                            FiniteElement::Edge &elem) override;
   auto getDofs(PointerCollection& pointers, FiniteElement::GenericFiniteElement *elem)
   -> std::vector<DegreeOfFreedom *> override;
   void setTangentResidual(
     PointerCollection& pointers,
-    FiniteElement::GenericFiniteElement *elem,
+    FiniteElement::Edge &elem,
     Eigen::Matrix<prec, Eigen::Dynamic, Eigen::Dynamic> &stiffness,
     Eigen::Matrix<prec, Eigen::Dynamic, 1> &residual, std::vector<DegreeOfFreedom *> &Dofs) override;
 
@@ -33,7 +35,7 @@ public:
 
   // plot
   void toParaviewAdaper(PointerCollection &pointers,
-                        FiniteElement::GenericFiniteElement *elem,
+                        FiniteElement::Edge &elem,
                         vtkPlotInterface &paraviewAdapter,
                         ParaviewSwitch control) override;
 

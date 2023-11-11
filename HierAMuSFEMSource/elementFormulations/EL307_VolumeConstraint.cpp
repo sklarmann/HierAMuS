@@ -4,6 +4,8 @@
 
 
 
+#include "GenericNodes.h"
+
 #include <elementFormulations/EL307_VolumeConstraint.h>
 #include <pointercollection/pointercollection.h>
 
@@ -18,13 +20,14 @@
 
 #include "math/MatrixOperations.h"
 
+#include "geometry/GeometryData.h"
 
 
 namespace HierAMuS::Elementformulations {
 
 
 EL307_VolumeConstraint::EL307_VolumeConstraint(PointerCollection *ptrCol)
-    : GenericElementFormulation(ptrCol) {}
+    : GenericElementFormulationInterface(ptrCol) {}
 
 EL307_VolumeConstraint::~EL307_VolumeConstraint() {}
 
@@ -41,7 +44,7 @@ void EL307_VolumeConstraint::readData(PointerCollection &pointers,
   m_K = list.getPrecVal("stiffness");
 
 
-  auto Log = pointers.getSPDLogger();
+  auto &Log = pointers.getSPDLogger();
 
   Log.info("\n{:-<100}\n"
                 "*   Element 307, specified Options\n"
@@ -57,26 +60,22 @@ void EL307_VolumeConstraint::readData(PointerCollection &pointers,
   this->messageUnprocessed(pointers, list, "EL307_VolumeConstraint");
 }
 
-void EL307_VolumeConstraint::setDegreesOfFreedom(PointerCollection& pointers, FiniteElement::GenericFiniteElement *elem)
-{
-  FiniteElement::VolumeConstraint *volelem =
-      dynamic_cast<FiniteElement::VolumeConstraint *>(elem);
+void EL307_VolumeConstraint::setDegreesOfFreedom(PointerCollection &pointers,
+                                                 FiniteElement::VolumeConstraint &elem) {
 
-  volelem->setH1Shapes(pointers, m_meshIdDisp, m_intOrderDisp);
-  volelem->setVertexNodes(pointers, m_meshIdLam);
+
+  elem.setH1Shapes(pointers, m_meshIdDisp, m_intOrderDisp);
+  elem.setVertexNodes(pointers, m_meshIdLam);
 
 
   Types::Vector3<prec> coor = pointers.getGeometryData()->getxMax();
   m_xmax = coor(0);
 }
 
-void EL307_VolumeConstraint::AdditionalOperations(PointerCollection& pointers, FiniteElement::GenericFiniteElement *elem) {
-
-  FiniteElement::VolumeConstraint *volelem =
-      dynamic_cast<FiniteElement::VolumeConstraint *>(elem);
+void EL307_VolumeConstraint::AdditionalOperations(PointerCollection &pointers, FiniteElement::VolumeConstraint &elem) {
 
   if (m_mode == 4) { // Thermal boundary conditions
-    auto Nodes = volelem->getVertexNodes(pointers, m_meshIdLam);
+    auto Nodes = elem.getVertexNodes(pointers, m_meshIdLam);
     Nodes[0]->getDegreeOfFreedom(2).setStatus(dofStatus::inactive);
   }
 }
@@ -95,12 +94,11 @@ auto EL307_VolumeConstraint::getDofs(PointerCollection& pointers, FiniteElement:
 }
 
 void EL307_VolumeConstraint::setTangentResidual(PointerCollection& pointers,
-                                              FiniteElement::GenericFiniteElement *elem,
+                                              FiniteElement::VolumeConstraint &elem,
                                               Eigen::Matrix<prec, Eigen::Dynamic, Eigen::Dynamic> &stiffness,
                                               Eigen::Matrix<prec, Eigen::Dynamic, 1> &residual, std::vector<DegreeOfFreedom *> &Dofs)
 {
-  FiniteElement::VolumeConstraint *volElement =
-      dynamic_cast<FiniteElement::VolumeConstraint *>(elem);
+  FiniteElement::VolumeConstraint *volElement = &elem;
 
   switch(this->m_mode){
     case 1:
@@ -124,7 +122,7 @@ auto EL307_VolumeConstraint::getNumberOfIntergrationPoints(
 }
 
 void EL307_VolumeConstraint::toParaviewAdaper(PointerCollection &pointers,
-                                FiniteElement::GenericFiniteElement *elem,
+                                FiniteElement::VolumeConstraint &elem,
                                 vtkPlotInterface &paraviewAdapter,
                                 ParaviewSwitch control)
 {
@@ -159,7 +157,7 @@ void EL307_VolumeConstraint::setTangentResidual_XDir(
   indexType numDispNodes = numDofs / 3 - 1;
   for (auto gp:GP)
   {
-    Types::MatrixXX<prec> jaco = volElement->getJacobian(pointers, gp);
+    Types::Matrix33<prec> jaco = volElement->getJacobian(pointers, gp);
     auto shapes = volElement->getH1Shapes(pointers, m_intOrderDisp, jaco, gp);
     Types::Vector3<prec> coor = volElement->getVolumeCoordinates(pointers, gp);
     prec dV = jaco.determinant() * gp.weight;
@@ -219,7 +217,7 @@ void EL307_VolumeConstraint::setTangentResidual_TempGradient(
   
   indexType numDispNodes = numDofs / 3 - 1;
   for (auto gp : GP) {
-    Types::MatrixXX<prec> jaco = volElement->getJacobian(pointers, gp);
+    Types::Matrix33<prec> jaco = volElement->getJacobian(pointers, gp);
     auto shapes = volElement->getH1Shapes(pointers, m_intOrderDisp, jaco, gp);
     Types::Vector3<prec> coor = volElement->getVolumeCoordinates(pointers, gp);
     prec dV = jaco.determinant() * gp.weight;
@@ -249,52 +247,6 @@ void EL307_VolumeConstraint::setTangentResidual_TempGradient(
 
 }
 
-auto EL307_VolumeConstraint::getBMatrixLinear(PointerCollection& pointers, Geometry::H1Shapes &shapes, IntegrationPoint &intPoint, FiniteElement::beamInterfaceElement3D &elem) -> Types::Matrix6X<prec>
-{
-  indexType numShapes = shapes.shapes.rows();
-
-  Types::Vector3<prec> localCoor = elem.getLocalCoordinate(pointers, intPoint);
-
-  Types::Matrix6X<prec> BMat;
-  BMat.resize(6, numShapes*3);
-  BMat.setZero();
-
-  Types::Matrix33<prec> R0T = elem.getRotationR0().transpose();
-  Types::Vector3T<prec> A1 = R0T.block(0, 0, 1, 3);
-  Types::Vector3T<prec> A2 = R0T.block(1, 0, 1, 3);
-  Types::Vector3T<prec> A3 = R0T.block(2, 0, 1, 3);
-
-  for (auto i=0;i<numShapes-1;++i){
-    BMat.block(0,i*3,1,3) = shapes.shapeDeriv(0,i)*A1;
-    BMat.block(1,i*3,1,3) = shapes.shapeDeriv(1,i)*A2;
-    BMat.block(2,i*3,1,3) = shapes.shapeDeriv(2,i)*A3;
-
-    BMat.block(3,i*3,1,3) = shapes.shapeDeriv(1,i)*A1;
-    BMat.block(3,i*3,1,3) += shapes.shapeDeriv(0,i)*A2;
-
-    BMat.block(4,i*3,1,3) = shapes.shapeDeriv(2,i)*A1;
-    BMat.block(4,i*3,1,3) += shapes.shapeDeriv(0,i)*A3;
-
-    BMat.block(5,i*3,1,3) = shapes.shapeDeriv(2,i)*A2;
-    BMat.block(5,i*3,1,3) += shapes.shapeDeriv(1,i)*A3;
-
-  }
-
-  indexType pos = numShapes-1;
-  pos *= 3;
-
-  BMat.block(0, pos, 1, 3) = shapes.shapeDeriv(0,numShapes-1)*(localCoor(2)*A2-localCoor(1)*A3);
-
-  BMat.block(3, pos, 1, 3) = -shapes.shapeDeriv(0,numShapes-1)*localCoor(2)*A1;
-  BMat.block(3, pos, 1, 3) += -shapes.shapes(numShapes-1)*A3;
-
-  BMat.block(4, pos, 1, 3) = shapes.shapeDeriv(0,numShapes-1)*localCoor(1)*A1;
-  BMat.block(4, pos, 1, 3) += shapes.shapes(numShapes-1)*A2;
-
-  //std::cout << "R0\n" << R0T << std::endl;
-
-  return BMat;
-}
 
 
 

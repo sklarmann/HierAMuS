@@ -3,6 +3,8 @@
 // SPDX-License-Identifier: BSD-3-Clause
 
 #include "ElementListWrapper.h"
+#include "pointercollection/pointercollection.h"
+#include "finiteElements/GenericFiniteElement.h"
 
 namespace HierAMuS {
 namespace FiniteElement {

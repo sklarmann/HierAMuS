@@ -7,7 +7,7 @@
 
 namespace py = pybind11;
 
-#include "loads/PropfunctionHandler.h"
+#include "PropfunctionHandler.h"
 
 namespace HierAMuS {
 //class PyInfoData : public InfoData {

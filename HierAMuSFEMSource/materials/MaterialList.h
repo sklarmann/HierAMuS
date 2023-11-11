@@ -5,14 +5,13 @@
 
 
 #pragma once
-#include <datatypes.h>
-
-#include <forwarddeclaration.h>
+#include "datatypes.h"
 
 #include <vector>
 
-namespace HierAMuS{
+namespace HierAMuS {
 namespace Materials {
+class Material;
 class MaterialList {
 public:
   MaterialList();

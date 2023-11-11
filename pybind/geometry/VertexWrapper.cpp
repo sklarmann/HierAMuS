@@ -3,12 +3,14 @@
 // SPDX-License-Identifier: BSD-3-Clause
 
 #include "VertexWrapper.h"
+#include "pybind11/eigen.h"
 
 void HierAMuS::Geometry::VertexWrapper::registerFunctions() {
   this->temp.def(py::init<>())
       .def("setCoordinates",
            py::overload_cast<prec, prec, prec>(
-               &HierAMuS::Geometry::Vertex::setCoordinates))
-      .def("connectEdge",&HierAMuS::Geometry::Vertex::connectEdge)
-      .def("connectFace",&HierAMuS::Geometry::Vertex::connectFace);
+                                 &HierAMuS::Geometry::VertexData::setCoordinates))
+      .def("getCoordinates", py::overload_cast<>(&VertexData::getCoordinates))
+      .def("connectEdge",&HierAMuS::Geometry::VertexData::connectEdge)
+      .def("connectFace",&HierAMuS::Geometry::VertexData::connectFace);
 }

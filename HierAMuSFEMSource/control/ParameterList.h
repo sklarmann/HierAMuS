@@ -7,13 +7,12 @@
 #pragma once
 #include <map>
 #include <string>
-#include <datatypes.h>
+#include "datatypes.h"
 
-#include <control/OutputHandler.h>
-
-#include <types/MatrixTypes.h>
+#include "types/MatrixTypes.h"
 
 namespace HierAMuS {
+class OutputHandler;
 
 class ParameterList {
 public:
@@ -28,8 +27,6 @@ public:
   indexType getIndexVal(const std::string& name);
   Types::MatrixXX<prec> getPrecMatrix(const std::string& name);
   Types::MatrixXX<indexType> getIndexMatrix(const std::string& name);
-
-  void outputRemainingValues(OutputHandler &Log);
 
   bool hasParameter(std::string paramName);
   bool empty();

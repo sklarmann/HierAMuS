@@ -14,15 +14,8 @@ HistoryDataStructure::HistoryDataStructure(
   std::vector<std::pair<indexType, indexType>> updateHistory)
     : m_constHistory(std::move(constHistory)), m_updateHistory(std::move(updateHistory))
 {
-
-  m_numberOfConstValues = 0;
-  for (auto &i : m_constHistory) {
-    m_numberOfConstValues += i.first * i.second;
-  }
-  m_numberOfUpdateValues = 0;
-  for (auto &i : m_updateHistory) {
-    m_numberOfUpdateValues += i.first * i.second;
-  }
+  update_number_of_const_values();
+  update_number_of_update_values();
 }
 
 auto HistoryDataStructure::getNumberOfUpdateValues() const -> indexType {
@@ -41,6 +34,20 @@ auto HistoryDataStructure::getConstStructure() const
 auto HistoryDataStructure::getUpdateStructure() const
     -> const std::vector<std::pair<indexType, indexType>> & {
   return m_updateHistory;
+}
+
+void HistoryDataStructure::update_number_of_update_values() {
+  m_numberOfUpdateValues = 0;
+  for (auto &i : m_updateHistory) {
+    m_numberOfUpdateValues += i.first * i.second;
+  }
+}
+
+void HistoryDataStructure::update_number_of_const_values() {
+  m_numberOfConstValues = 0;
+  for (auto &i : m_constHistory) {
+    m_numberOfConstValues += i.first * i.second;
+  }
 }
 
 } // namespace HierAMuS

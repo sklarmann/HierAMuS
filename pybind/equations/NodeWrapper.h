@@ -7,7 +7,7 @@
 
 namespace py = pybind11;
 
-#include "equations/GenericNodes.h"
+#include "GenericNodes.h"
 
 namespace HierAMuS {
 //class PyEquationHandler : public EquationHandler {

@@ -7,8 +7,7 @@
 //
 
 #include "NodeWrapper.h"
-#include "equations/DegreeOfFreedom.h"
-#include "pointercollection/pointercollection.h"
+#include "DegreeOfFreedom.h"
 #include <pybind11/stl.h>
 
 namespace HierAMuS {
@@ -16,10 +15,8 @@ void GenericNodesWrapper::registerFunctions() {
   this->temp
       .def(
           "getDegreesOfFreedom",
-          [](GenericNodes &self, PointerCollection &pointers) {
-            std::vector<DegreeOfFreedom *> dofs;
-            self.getDegreesOfFreedom(pointers, dofs);
-            return dofs;
+          [](GenericNodes &self) {
+            return self.getDegreesOfFreedom();
           },
           py::return_value_policy::reference)
       .def("getDegreeOfFreedom", &GenericNodes::getDegreeOfFreedom,

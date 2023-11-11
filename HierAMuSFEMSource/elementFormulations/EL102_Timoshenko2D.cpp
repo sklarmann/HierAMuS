@@ -2,12 +2,11 @@
 //
 // SPDX-License-Identifier: BSD-3-Clause
 
-#include "forwarddeclaration.h"
+
 #include "plot/vtkplotClassBase.h"
 
 
 
-#include <equations/DegreeOfFreedom.h>
 
 
 #include <elementFormulations/EL102_Timoshenko2D.h>
@@ -15,15 +14,12 @@
 
 #include "shapefunctions/IntegrationsPoints/IntegrationPoints.h"
 
-#include <finiteElements/GenericFiniteElement.h>
+#include <finiteElements/Edge.h>
 
-#include <geometry/Base.h>
-#include <geometry/Vertex.h>
+#include <geometry/GeometryBaseData.h>
+#include <geometry/VertexData.h>
 
-#include <equations/EquationHandler.h>
-#include <equations/GenericNodes.h>
-#include <equations/NodeSet.h>
-#include <equations/Nodetypes.h>
+#include "control/ParameterList.h"
 
 
 #include <pointercollection/pointercollection.h>
@@ -31,7 +27,7 @@
 
 #include <Eigen/Dense>
 
-#include <loads/PropfunctionHandler.h>
+#include "PropfunctionHandler.h"
 
 #include <stdexcept>
 #include <types/MatrixTypes.h>
@@ -44,7 +40,7 @@
 namespace HierAMuS::Elementformulations {
 
 EL102_Timoshenko2D::EL102_Timoshenko2D(PointerCollection *ptrCol)
-    : GenericElementFormulation(ptrCol) {}
+    : GenericElementFormulationInterface(ptrCol) {}
 
 EL102_Timoshenko2D::~EL102_Timoshenko2D() = default;
 
@@ -82,23 +78,23 @@ void EL102_Timoshenko2D::readData(PointerCollection &pointers,
   this->messageUnprocessed(pointers, list, "EL102_Timoshenko2D");
 }
 
-void EL102_Timoshenko2D::setDegreesOfFreedom(
-  PointerCollection& pointers, FiniteElement::GenericFiniteElement *elem) {
+void EL102_Timoshenko2D::setDegreesOfFreedom(PointerCollection &pointers,
+                                             FiniteElement::Edge &elem) {
 
   if (this->mode == 1) {
-    elem->setH1Shapes(pointers, this->meshIdDisp, this->disporder);
-    elem->setH1Shapes(pointers, this->meshIdRot, this->rotorder);
+    elem.setH1Shapes(pointers, this->meshIdDisp, this->disporder);
+    elem.setH1Shapes(pointers, this->meshIdRot, this->rotorder);
   } else {
-    elem->setH1Shapes(pointers, this->meshIdDisp, this->disporder);
+    elem.setH1Shapes(pointers, this->meshIdDisp, this->disporder);
   }
 }
 
 void EL102_Timoshenko2D::AdditionalOperations(
-  PointerCollection& pointers, FiniteElement::GenericFiniteElement *elem) {
+  PointerCollection &pointers, FiniteElement::Edge &elem) {
   if (this->mode == 1) {
-    elem->setAllNodeBoundaryConditionMeshId(pointers, this->meshIdDisp, 2);
-    elem->setAllNodeBoundaryConditionMeshId(pointers, this->meshIdRot, 1);
-    elem->setAllNodeBoundaryConditionMeshId(pointers, this->meshIdRot, 2);
+    elem.setAllNodeBoundaryConditionMeshId(pointers, this->meshIdDisp, 2);
+    elem.setAllNodeBoundaryConditionMeshId(pointers, this->meshIdRot, 1);
+    elem.setAllNodeBoundaryConditionMeshId(pointers, this->meshIdRot, 2);
   }
 }
 
@@ -116,7 +112,7 @@ auto EL102_Timoshenko2D::getDofs(PointerCollection& pointers, FiniteElement::Gen
 
 void EL102_Timoshenko2D::setTangentResidual(
   PointerCollection& pointers,
-  FiniteElement::GenericFiniteElement *elem,
+  FiniteElement::Edge &elem,
   Eigen::Matrix<prec, Eigen::Dynamic, Eigen::Dynamic> &stiffness,
   Eigen::Matrix<prec, Eigen::Dynamic, 1> &residual, std::vector<DegreeOfFreedom *> &Dofs) {
 
@@ -136,27 +132,27 @@ void EL102_Timoshenko2D::setTangentResidual(
 
 void EL102_Timoshenko2D::setTangentResidualLinear(
   PointerCollection& pointers,
-  FiniteElement::GenericFiniteElement *elem,
+  FiniteElement::Edge &elem,
   Eigen::Matrix<prec, Eigen::Dynamic, Eigen::Dynamic> &stiffness,
   Eigen::Matrix<prec, Eigen::Dynamic, 1> &residual, std::vector<DegreeOfFreedom *> &Dofs) {
   
   indexType intorder;
   this->disporder > this->rotorder ? intorder = this->disporder
                                    : intorder = this->rotorder;
-  auto GP = elem->getIntegrationPoints(pointers);
+  auto GP = elem.getIntegrationPoints(pointers);
   GP.setOrder(intorder*2);
   
 
   
   std::vector<DegreeOfFreedom *> dispDofs, rotDofs;
-  elem->getH1Dofs(pointers, dispDofs, this->meshIdDisp, this->disporder);
-  elem->getH1Dofs(pointers, rotDofs, this->meshIdRot, this->rotorder);
+  elem.getH1Dofs(pointers, dispDofs, this->meshIdDisp, this->disporder);
+  elem.getH1Dofs(pointers, rotDofs, this->meshIdRot, this->rotorder);
   Dofs.clear();
   Dofs.insert(Dofs.end(), dispDofs.begin(), dispDofs.end());
   Dofs.insert(Dofs.end(), rotDofs.begin(), rotDofs.end());
 
   Types::VectorX<prec> disp;
-  elem->getSolution(pointers, Dofs, disp);
+  elem.getSolution(pointers, Dofs, disp);
     
 
   stiffness.resize(Dofs.size(), Dofs.size());
@@ -167,11 +163,7 @@ void EL102_Timoshenko2D::setTangentResidualLinear(
   indexType numDispNodes = dispDofs.size() / 3;
   indexType numRotNodes = rotDofs.size() / 3;
 
-  Types::Matrix3X<prec> Bmat;
-
-  Bmat.resize(3, Dofs.size());
-  Bmat.setZero();
-  
+  Types::Matrix3X<prec> Bmat = Types::Matrix3X<prec>::Zero(3,Dofs.size());  
 
   Types::Matrix33<prec> cmat = this->getMaterialMatrix();
 
@@ -179,14 +171,13 @@ void EL102_Timoshenko2D::setTangentResidualLinear(
   for (auto i : GP) {
     Types::Vector3<prec> dirVec;
     Types::Vector3<prec> dirVec2;
-    Types::MatrixXX<prec> jacobi;
-    dirVec = elem->getA1Vector(pointers, i);
+    dirVec = elem.getA1Vector(pointers, i);
     dirVec2(0) = -dirVec(1);
     dirVec2(1) = dirVec(0);
     dirVec2(2) = prec(0);
-    jacobi = elem->getJacobian(pointers, i);
-    auto dispShapes = elem->getH1Shapes(pointers, this->disporder, jacobi, i);
-    auto rotShapes = elem->getH1Shapes(pointers, this->rotorder, jacobi, i);
+    auto jacobi = elem.getJacobian(pointers, i);
+    auto dispShapes = elem.getH1Shapes(pointers, this->disporder, jacobi, i);
+    auto rotShapes = elem.getH1Shapes(pointers, this->rotorder, jacobi, i);
     
 
     for (auto i = 0; i < numDispNodes; ++i) {
@@ -201,7 +192,7 @@ void EL102_Timoshenko2D::setTangentResidualLinear(
       Bmat(1, 3 * i + offset) = -rotShapes.shapes(i);
     }
 
-    stiffness += Bmat.transpose() * cmat * Bmat * jacobi.determinant() * i.weight;
+    stiffness += Bmat.transpose() * cmat * Bmat * jacobi * i.weight;
   }
 
   residual = stiffness * disp;
@@ -209,22 +200,18 @@ void EL102_Timoshenko2D::setTangentResidualLinear(
 
 void EL102_Timoshenko2D::setTangentResidualNonlinear(
   PointerCollection& pointers,
-  FiniteElement::GenericFiniteElement *elem,
+  FiniteElement::Edge &elem,
   Eigen::Matrix<prec, Eigen::Dynamic, Eigen::Dynamic> &stiffness,
   Eigen::Matrix<prec, Eigen::Dynamic, 1> &residual, std::vector<DegreeOfFreedom *> &Dofs) {
 
-  auto &vert1 = elem->getVertex(pointers, 0);
-  auto &vert2 = elem->getVertex(pointers, 1);
-
-  Types::Vector3<prec> coor1, coor2;
-  coor1 = vert1.getCoordinates();
-  coor2 = vert2.getCoordinates();
-  prec length, detj;
-  elem->getJacobian(pointers, detj, 0);
-  length = (prec)2 * detj;
+  prec length(0), detj(0);
+  IntegrationPoint ippp;
+  ippp.xi = prec(0);
+  auto jj = elem.getJacobian(pointers, ippp);
+  length = (prec)2 * jj;
 
   Dofs.clear();
-  elem->getH1Dofs(pointers, Dofs, this->meshIdDisp, this->disporder);
+  elem.getH1Dofs(pointers, Dofs, this->meshIdDisp, this->disporder);
   auto sol = pointers.getSolutionState();
   Eigen::Matrix<prec, Eigen::Dynamic, 1> disp;
   disp = sol->getSolution(Dofs);
@@ -235,13 +222,11 @@ void EL102_Timoshenko2D::setTangentResidualNonlinear(
   indexType numNodes = matsizes / 3;
 
   std::vector<prec> gp, weight;
-  elem->getGaussPoints(this->disporder + 1, weight, gp);
+  elem.getGaussPoints(this->disporder + 1, weight, gp);
 
   Eigen::Matrix<prec, 2, 1> svec;
-  svec(0) = coor2[0] - coor1[0];
-  svec(1) = coor2[1] - coor1[1];
-
-  svec = svec / length;
+  svec = elem.getA1Vector(pointers, ippp).block(0,0,2,1);
+  
 
   prec css, sss;
 
@@ -280,18 +265,20 @@ void EL102_Timoshenko2D::setTangentResidualNonlinear(
   GN.resize(matsizes, matsizes);
   GQ.resize(matsizes, matsizes);
   GM.resize(matsizes, matsizes);
-  for (auto i = 0; i < gp.size(); ++i) {
-    Types::VectorX<prec> shape, shapeDeriv;
-    elem->getH1Shapes(pointers, this->disporder, detj, shape, shapeDeriv,
-                      gp[i]);
 
+  auto GP = this->getIntegrationPoints(pointers, elem);
+
+  for (auto &ip : GP) {
+
+    auto shapes = elem.getH1Shapes(pointers, this->disporder, detj, ip);
+    
     prec ucx = 0, wcx = 0, bcx = 0, beta = 0;
 
     for (auto i = 0; i < numNodes; ++i) {
-      ucx += shapeDeriv(i) * localDisp(3 * i);
-      wcx += shapeDeriv(i) * localDisp(3 * i + 1);
-      bcx += shapeDeriv(i) * localDisp(3 * i + 2);
-      beta += shape(i) * localDisp(3 * i + 2);
+      ucx += shapes.shapeDeriv(0,i) * localDisp(3 * i);
+      wcx += shapes.shapeDeriv(0,i) * localDisp(3 * i + 1);
+      bcx += shapes.shapeDeriv(0,i) * localDisp(3 * i + 2);
+      beta += shapes.shapes(i) * localDisp(3 * i + 2);
     }
     // prec ucx = shapeDeriv(0) * localDisp(0) + shapeDeriv(1) * localDisp(3);
     // prec wcx = shapeDeriv(0) * localDisp(1) + shapeDeriv(1) * localDisp(4);
@@ -306,42 +293,42 @@ void EL102_Timoshenko2D::setTangentResidualNonlinear(
     prec alpha1 = (-((prec)1 + ucx) * sin(beta) - wcx * cos(beta));
     prec alpha2 = (((prec)1 + ucx) * cos(beta) - wcx * sin(beta));
     for (auto j = 0; j < numNodes; ++j) {
-      Bmat(0, j * 3) = ((prec)1.0 + ucx) * shapeDeriv(j);
-      Bmat(0, j * 3 + 1) = wcx * shapeDeriv(j);
+      Bmat(0, j * 3) = ((prec)1.0 + ucx) * shapes.shapeDeriv(0,j);
+      Bmat(0, j * 3 + 1) = wcx * shapes.shapeDeriv(0,j);
 
-      Bmat(1, j * 3) = sin(beta) * shapeDeriv(j);
-      Bmat(1, j * 3 + 1) = cos(beta) * shapeDeriv(j);
-      Bmat(1, j * 3 + 2) = alpha2 * shape(j);
+      Bmat(1, j * 3) = sin(beta) * shapes.shapeDeriv(0,j);
+      Bmat(1, j * 3 + 1) = cos(beta) * shapes.shapeDeriv(0,j);
+      Bmat(1, j * 3 + 2) = alpha2 * shapes.shapes(j);
 
-      Bmat(2, j * 3) = cos(beta) * bcx * shapeDeriv(j);
-      Bmat(2, j * 3 + 1) = -bcx * sin(beta) * shapeDeriv(j);
-      Bmat(2, j * 3 + 2) = alpha1 * bcx * shape(i) + alpha2 * shapeDeriv(j);
+      Bmat(2, j * 3) = cos(beta) * bcx * shapes.shapeDeriv(0,j);
+      Bmat(2, j * 3 + 1) = -bcx * sin(beta) * shapes.shapeDeriv(0,j);
+      Bmat(2, j * 3 + 2) = alpha1 * bcx * shapes.shapes(j) + alpha2 * shapes.shapeDeriv(0,j);
     }
     GN.setZero();
     GQ.setZero();
     GM.setZero();
     for (auto j = 0; j < numNodes; ++j) {
       for (auto k = 0; k < numNodes; ++k) {
-        GN(j * 3, k * 3) = shapeDeriv(j) * shapeDeriv(k);
-        GN(j * 3 + 1, k * 3 + 1) = shapeDeriv(j) * shapeDeriv(k);
+        GN(j * 3, k * 3) = shapes.shapeDeriv(0,j) * shapes.shapeDeriv(0,k);
+        GN(j * 3 + 1, k * 3 + 1) = shapes.shapeDeriv(0,j) * shapes.shapeDeriv(0,k);
 
-        GQ(j * 3, k * 3 + 2) = shapeDeriv(j) * cos(beta) * shape(k);
-        GQ(j * 3 + 1, k * 3 + 2) = -shapeDeriv(j) * sin(beta) * shape(k);
-        GQ(j * 3 + 2, k * 3) = shape(j) * cos(beta) * shapeDeriv(k);
-        GQ(j * 3 + 2, k * 3 + 1) = -shape(j) * sin(beta) * shapeDeriv(k);
-        GQ(j * 3 + 2, k * 3 + 2) = shape(j) * alpha1 * shape(k);
+        GQ(j * 3, k * 3 + 2) = shapes.shapeDeriv(0,j) * cos(beta) * shapes.shapes(k);
+        GQ(j * 3 + 1, k * 3 + 2) = -shapes.shapeDeriv(0,j) * sin(beta) * shapes.shapes(k);
+        GQ(j * 3 + 2, k * 3) = shapes.shapes(j) * cos(beta) * shapes.shapeDeriv(0,k);
+        GQ(j * 3 + 2, k * 3 + 1) = -shapes.shapes(j) * sin(beta) * shapes.shapeDeriv(0,k);
+        GQ(j * 3 + 2, k * 3 + 2) = shapes.shapes(j) * alpha1 * shapes.shapes(k);
 
-        prec a = -shape(j) * sin(beta) * bcx * shapeDeriv(k) +
-                 shapeDeriv(j) * cos(beta) * shapeDeriv(k);
-        prec b = -shape(j) * cos(beta) * bcx * shapeDeriv(k) -
-                 shapeDeriv(j) * sin(beta) * shapeDeriv(k);
-        prec c = -shapeDeriv(j) * sin(beta) * bcx * shape(k) +
-                 shapeDeriv(j) * cos(beta) * shapeDeriv(k);
-        prec d = -shapeDeriv(j) * cos(beta) * bcx * shape(k) -
-                 shapeDeriv(j) * sin(beta) * shapeDeriv(k);
-        prec e = -shape(j) * alpha2 * bcx * shape(k) +
-                 shape(j) * alpha1 * shapeDeriv(k) +
-                 shapeDeriv(j) * alpha1 * shape(k);
+        prec a = -shapes.shapes(j) * sin(beta) * bcx * shapes.shapeDeriv(0,k) +
+                 shapes.shapeDeriv(0,j) * cos(beta) * shapes.shapeDeriv(0,k);
+        prec b = -shapes.shapes(j) * cos(beta) * bcx * shapes.shapeDeriv(0,k) -
+                 shapes.shapeDeriv(0,j) * sin(beta) * shapes.shapeDeriv(0,k);
+        prec c = -shapes.shapeDeriv(0,j) * sin(beta) * bcx * shapes.shapes(k) +
+                 shapes.shapeDeriv(0,j) * cos(beta) * shapes.shapeDeriv(0,k);
+        prec d = -shapes.shapeDeriv(0,j) * cos(beta) * bcx * shapes.shapes(k) -
+                 shapes.shapeDeriv(0,j) * sin(beta) * shapes.shapeDeriv(0,k);
+        prec e = -shapes.shapes(j) * alpha2 * bcx * shapes.shapes(k) +
+                 shapes.shapes(j) * alpha1 * shapes.shapeDeriv(0,k) +
+                 shapes.shapeDeriv(0,j) * alpha1 * shapes.shapes(k);
         GM(j * 3, k * 3 + 2) = c;
         GM(j * 3 + 1, k * 3 + 2) = d;
         GM(j * 3 + 2, k * 3 + 2) = e;
@@ -354,9 +341,9 @@ void EL102_Timoshenko2D::setTangentResidualNonlinear(
     GQ *= stress(1);
     GM *= stress(2);
 
-    residual += Bmat.transpose() * stress * detj * weight[i];
+    residual += Bmat.transpose() * stress * detj * ip.weight;
     stiffness +=
-        (Bmat.transpose() * mat * Bmat + GN + GQ + GM) * detj * weight[i];
+        (Bmat.transpose() * mat * Bmat + GN + GQ + GM) * detj * ip.weight;
   }
   stiffness = T.transpose() * stiffness * T;
   residual = T.transpose() * residual;
@@ -372,34 +359,25 @@ void EL102_Timoshenko2D::setTangentResidualNonlinear(
   residual(4) -= this->qy * propVal / (prec)2 * length;
 }
 
+auto EL102_Timoshenko2D::getIntegrationPoints(PointerCollection &pointers, FiniteElement::Edge &elem)
+    -> IntegrationPoints {
+
+  auto GP = elem.getIntegrationPoints(pointers);
+  indexType order = std::max(this->disporder, this->rotorder);
+  GP.setOrder(order * 2);
+  return GP;
+}
+
 void EL102_Timoshenko2D::setMass(
   PointerCollection& pointers,
   FiniteElement::GenericFiniteElement *elem,
   Eigen::Matrix<prec, Eigen::Dynamic, Eigen::Dynamic> &stiffness,
   Eigen::Matrix<prec, Eigen::Dynamic, 1> &residual, std::vector<DegreeOfFreedom *> &Dofs) {
-  auto eqHandler = pointers.getEquationHandler();
-  NodeSet *set1, *set2;
+  
   auto &vert1 = elem->getVertex(pointers, 0);
   auto &vert2 = elem->getVertex(pointers, 1);
-  set1 = vert1.getSetMeshId(pointers, this->meshIdDisp);
-  set2 = vert2.getSetMeshId(pointers, this->meshIdDisp);
-  std::vector<GenericNodes *> temp, Nodes;
-  eqHandler->getNodes(temp, *set1);
-  Nodes.push_back(temp[0]);
-  temp.clear();
-  eqHandler->getNodes(temp, *set2);
-  // set2->getNodes(&this->ptrCol,temp);
-  Nodes.push_back(temp[0]);
-
-  std::vector<DegreeOfFreedom *> tempDofs;
-  Nodes[0]->getDegreesOfFreedom(pointers, tempDofs);
-  for (auto i = 0; i < 3; ++i) {
-    Dofs.push_back(tempDofs[i]);
-  }
-  Nodes[1]->getDegreesOfFreedom(pointers, tempDofs);
-  for (auto i = 0; i < 3; ++i) {
-    Dofs.push_back(tempDofs[i]);
-  }
+  
+  elem->getH1Dofs(pointers, Dofs, this->meshIdDisp, this->disporder);
 
   Types::Vector3<prec> coor1, coor2;
   coor1 = vert1.getCoordinates();
@@ -508,46 +486,46 @@ void EL102_Timoshenko2D::getElementsLocalNodalReactions(
 }
 
 void EL102_Timoshenko2D::toParaviewAdaper(
-    PointerCollection &pointers, FiniteElement::GenericFiniteElement *elem,
+    PointerCollection &pointers, FiniteElement::Edge &elem,
     vtkPlotInterface &paraviewAdapter, ParaviewSwitch control) {
 
   switch (control) {
   case HierAMuS::ParaviewSwitch::Mesh: {
-    int matNum = static_cast<int>(elem->getMaterial()->getNumber());
+    int matNum = static_cast<int>(elem.getMaterial()->getNumber());
 
     Types::Vector3<prec> coors;
     std::vector<indexType> cell;
     cell.resize(2);
     for (auto i = 0; i < 2; ++i) {
-      auto &Vert = elem->getVertex(pointers, i);
+      auto &Vert = elem.getVertex(pointers, i);
       coors = Vert.getCoordinates();
       indexType id = Vert.getId();
       paraviewAdapter.addPoint(0, matNum, id, coors(0), coors(1), coors(2));
       cell[i] = id;
     }
     int vtkNumber = VTK_LINE;
-    indexType elid = elem->getId();
+    indexType elid = elem.getId();
     paraviewAdapter.addCell(0, matNum, elid, 1, cell, 2, vtkNumber);
 
     break;
   }
   case HierAMuS::ParaviewSwitch::Solution: {
-    int matNum = static_cast<int>(elem->getMaterial()->getNumber());
+    int matNum = static_cast<int>(elem.getMaterial()->getNumber());
 
     std::vector<DegreeOfFreedom *> Dofs;
-    elem->getH1Dofs(pointers, Dofs, this->meshIdDisp, this->disporder);
+    elem.getH1Dofs(pointers, Dofs, this->meshIdDisp, this->disporder);
     Types::VectorX<prec> dispSolution, rotSolution;
 
-    elem->getSolution(pointers, Dofs, dispSolution);
+    elem.getSolution(pointers, Dofs, dispSolution);
 
     Dofs.clear();
-    elem->getH1Dofs(pointers, Dofs, this->meshIdRot, this->rotorder);
-    elem->getSolution(pointers, Dofs, rotSolution);
+    elem.getH1Dofs(pointers, Dofs, this->meshIdRot, this->rotorder);
+    elem.getSolution(pointers, Dofs, rotSolution);
 
     indexType cc = 0;
     std::vector<prec> sol(3), solrot(3);
     for (auto i = 0; i < 2; ++i) {
-      auto &Vert = elem->getVertex(pointers, i);
+      auto &Vert = elem.getVertex(pointers, i);
       indexType Vid = Vert.getId();
       for (auto j = 0; j < 3; ++j) {
         sol[j] = dispSolution(cc + j);
@@ -579,9 +557,7 @@ auto EL102_Timoshenko2D::getHistoryDataStructure()
 
 auto EL102_Timoshenko2D::getNumberOfIntergrationPoints(
   PointerCollection& pointers, FiniteElement::GenericFiniteElement *elem) -> indexType {
-  auto GP = elem->getIntegrationPoints(pointers);
-  indexType order = std::max(this->disporder, this->rotorder);
-  GP.setOrder(order * 2);
+  auto GP = this->getIntegrationPoints(pointers, dynamic_cast<FiniteElement::Edge &>(*elem));
   return GP.getTotalGP();
 }
 

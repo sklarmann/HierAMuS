@@ -4,26 +4,23 @@
 
 #pragma once
 
-#include <forwarddeclaration.h>
-
-#include <solver/GenericSolutionState.h>
 #include <map>
+#include <solver/GenericSolutionState.h>
 
 #include <vector>
 
 namespace HierAMuS {
 
-	
-	class PointerCollection;
+class PointerCollection;
+class ParameterList;
 
-	
-	class TransientSolution : public GenericSolutionState {
-	public:
-		TransientSolution(ParameterList &parameter) : GenericSolutionState( parameter) {};
-		~TransientSolution() {};
-    auto getType() -> SolutionTypes override { return SolutionTypes::Transient; }
-    
+class TransientSolution : public GenericSolutionState {
+public:
+  TransientSolution(ParameterList &parameter)
+      : GenericSolutionState(parameter){};
+  ~TransientSolution(){};
+  auto getType() -> SolutionTypes override { return SolutionTypes::Transient; }
 
-	private:
-	};
+private:
+};
 } /* namespace HierAMuS */

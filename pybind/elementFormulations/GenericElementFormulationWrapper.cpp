@@ -4,6 +4,7 @@
 
 #include "GenericElementFormulationWrapper.h"
 #include "pointercollection/pointercollection.h"
+#include "control/ParameterList.h"
 
 namespace HierAMuS {
 namespace Elementformulations {

@@ -21,6 +21,9 @@ class FEMPy:
     def __init__(self,filepath : str, filename : str):
         self.Info = HierAMuSPyFEM.InfoData()
 
+        # Energy norm and residual norm
+        self.maxEnergy = 0
+        self.maxResidual = 0
 
         self.ptr = HierAMuSPyFEM.PointerCollection()
         #self.ptr = pyPointerCollection()
@@ -43,7 +46,7 @@ class FEMPy:
         self.Info.setOutFile(ff)
 
         ofilename = os.path.join(filepath,ff)
-        self.Info.Log.openLogFile(filepath,ff)
+        self.Info.Log.openLogFile(filepath,ff,True)
         self.Info.setInFile(filename)
         self.Info.setOutFile(filename + ".log")
         fname = filepath.replace("\\","/")

@@ -6,8 +6,14 @@
 #include "datatypes.h"
 #include "solver/Homogenization/Homogenization2DSolid.h"
 
-#include "equations/EquationHandler.h"
+
+// Equations 
+#include "EquationHandler.h"
+
+
 #include "geometry/GeometryData.h"
+#include "geometry/Edges/EdgesData.h"
+#include "geometry/VertexData.h"
 
 #include "control/BinaryWrite.h"
 
@@ -59,7 +65,7 @@ void Homogenization2DSolid::init(PointerCollection &pointers,
   auto getEdgeNumbers = [](PointerCollection &pointers, Types::Vector3<prec> &normal, Types::Vector3<prec> & point)
   {
     auto edges =
-        pointers.getGeometryData()->getEdgesInPlane(pointers, normal, point);
+        pointers.getGeometryData()->getEdgesInPlane(normal, point);
     Types::MatrixXX<indexType> edgeNums;
     indexType nEdges = edges.size();
     edgeNums.resize(nEdges, 1);
@@ -111,9 +117,9 @@ void Homogenization2DSolid::setEdgesBC(PointerCollection &pointers,
   for (auto i = 0; i < edges.cols(); ++i) {
     for (auto j = 0; j < edges.rows(); ++j) {
       indexType ednum = edges(j, i);
-      auto &Edge = geoData->getEdge(ednum);
-      Edge.setBoundaryCondition(pointers, meshIdDisp, dispOrder,
-                                Geometry::ShapeFunctionTypes::H1, bc, true);
+      auto &Edge = geoData->getEdgeData(ednum);
+      Edge.setBoundaryCondition(meshIdDisp, dispOrder, Geometry::ShapeFunctionTypes::H1,
+                                bc, true);
     }
   }
 }
@@ -169,12 +175,12 @@ void Homogenization2DSolid::edgeEntriesAMatrix(
   for (auto i = 0; i < edges.rows(); ++i) {
     for (auto j = 0; j < edges.cols(); ++j) {
       indexType ednum = edges(i, j);
-      auto &Edge = geoData->getEdge(ednum);
+      auto &Edge = geoData->getEdgeData(ednum);
       for (auto k = 0; k < Edge.getNumberOfVerts(); ++k) {
-        auto &Vert = Edge.getVertex(pointers, k);
-        auto Nodes = Vert.getNodesOfSet(pointers, meshIdDisp);
+        auto &Vert = *Edge.getVertex(k);
+        auto Nodes = Vert.getNodesOfSet(meshIdDisp);
         auto coor = Vert.getCoordinates();
-        auto Dofs = Nodes[0]->getDegreesOfFreedom(pointers);
+        auto Dofs = Nodes[0]->getDegreesOfFreedom();
 
         indexType posx = Dofs[0]->getEqId();
         indexType posy = Dofs[1]->getEqId();

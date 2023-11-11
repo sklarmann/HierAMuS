@@ -6,9 +6,8 @@
 
 #pragma once
 
-//#include <forwarddeclaration.h>
 #include "shapefunctions/IntegrationsPoints/IntegrationPoints.h"
-#include <elementFormulations/GenericElementFormulation.h>
+#include "elementFormulations/GenericElementFormulationInterface.h"
 
 
 namespace HierAMuS::Geometry{
@@ -21,25 +20,26 @@ namespace HierAMuS::Geometry{
 
 namespace HierAMuS::Elementformulations {
 
-class EL201_2DShell : public GenericElementFormulation {
+class EL201_2DShell : public GenericElementFormulationInterface<FiniteElement::Face> {
 public:
   explicit EL201_2DShell(PointerCollection *ptrCol);
   ~EL201_2DShell() override;
   void readData(PointerCollection &pointers, ParameterList &list) override;
-  void setDegreesOfFreedom(PointerCollection& pointers, FiniteElement::GenericFiniteElement *elem) override;
-  void AdditionalOperations(PointerCollection& pointers, FiniteElement::GenericFiniteElement *elem) override;
+  void setDegreesOfFreedom(PointerCollection &pointers,
+                           FiniteElement::Face &elem) override;
+  void AdditionalOperations(PointerCollection& pointers, FiniteElement::Face &elem) override;
   auto getDofs(PointerCollection& pointers, FiniteElement::GenericFiniteElement *elem)
   -> std::vector<DegreeOfFreedom *> override;
   void setTangentResidual(
     PointerCollection& pointers,
-    FiniteElement::GenericFiniteElement *elem,
+    FiniteElement::Face &elem,
     Eigen::Matrix<prec, Eigen::Dynamic, Eigen::Dynamic> &stiffness,
     Eigen::Matrix<prec, Eigen::Dynamic, 1> &residual, std::vector<DegreeOfFreedom *> &Dofs) override;
 
  
   // plot
   void toParaviewAdaper(PointerCollection &pointers,
-                                FiniteElement::GenericFiniteElement *elem,
+                                FiniteElement::Face &elem,
                                 vtkPlotInterface &paraviewAdapter,
                                 ParaviewSwitch control) override;
 
@@ -48,10 +48,9 @@ public:
   -> indexType override;
   
 private:
-  Types::Matrix33<prec> getMaterialMatrix();
   Types::Matrix3X<prec>
   getLocalStrainStressInterpolation(PointerCollection& pointers,
-                                    FiniteElement::GenericFiniteElement *elem, prec xi, prec eta);
+                                    FiniteElement::Face &elem, prec xi, prec eta);
   static Types::Matrix3X<prec> getBMatrix(const Types::Matrix2X<prec> &shapeDeriv,
                                    indexType numDofs);
   static Types::VectorXT<prec> getHMatrix(const Types::VectorX<prec>& shapes,
@@ -65,25 +64,25 @@ private:
 
   void setTangentResidualDispFormulation(
     PointerCollection& pointers,
-    FiniteElement::GenericFiniteElement *elem,
+    FiniteElement::Face &elem,
     Eigen::Matrix<prec, Eigen::Dynamic, Eigen::Dynamic> &stiffness,
     Eigen::Matrix<prec, Eigen::Dynamic, 1> &residual, std::vector<DegreeOfFreedom *> &Dofs);
 
   void setTangentResidualDispNonLinear(
     PointerCollection& pointers,
-    FiniteElement::GenericFiniteElement *elem,
+    FiniteElement::Face &elem,
     Eigen::Matrix<prec, Eigen::Dynamic, Eigen::Dynamic> &stiffness,
     Eigen::Matrix<prec, Eigen::Dynamic, 1> &residual, std::vector<DegreeOfFreedom *> &Dofs);
 
   void setTangentResidualHuWashizuFormulation(
     PointerCollection& pointers,
-    FiniteElement::GenericFiniteElement *elem,
+    FiniteElement::Face &elem,
     Eigen::Matrix<prec, Eigen::Dynamic, Eigen::Dynamic> &stiffness,
     Eigen::Matrix<prec, Eigen::Dynamic, 1> &residual, std::vector<DegreeOfFreedom *> &Dofs);
 
   void setTangentResidualDispAndStreFormulation(
     PointerCollection& pointers,
-    FiniteElement::GenericFiniteElement* elem,
+    FiniteElement::Face &elem,
     Eigen::Matrix<prec, Eigen::Dynamic, Eigen::Dynamic>& stiffness,
     Eigen::Matrix<prec, Eigen::Dynamic, 1>& residual, std::vector<DegreeOfFreedom*>& Dofs);
 
@@ -97,7 +96,7 @@ private:
 
   indexType meshIdDisp, intOrderDisp;
   indexType meshIdStre, intOrderStre;
-  indexType meshIdWarp, mode;
+  indexType mode;
 
 
   const static HistoryDataStructure m_HistoryDataStructure;

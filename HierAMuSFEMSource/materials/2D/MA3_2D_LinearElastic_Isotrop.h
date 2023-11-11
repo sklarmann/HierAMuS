@@ -6,10 +6,8 @@
 
 #pragma once
 
-#include <forwarddeclaration.h>
-
-#include <materials/GenericMaterialFormulation.h>
-#include <types/MatrixTypes.h>
+#include "materials/GenericMaterialFormulation.h"
+#include "types/MatrixTypes.h"
 
 namespace HierAMuS::Materials {
   class MA3_2D_LinearElastic_Isotrop : public GenericMaterialFormulation {

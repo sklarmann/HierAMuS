@@ -7,7 +7,7 @@ set(HEADRS)
 
 add_subdirectory(plot)
 
-option(BUILD_PLOT "Enable build of plotting library, requires Paraview" OFF)
+option(BUILD_PLOT "Enable build of plotting library, requires Paraview" ON)
 
 
 if(BUILD_PLOT)

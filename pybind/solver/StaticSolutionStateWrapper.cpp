@@ -3,9 +3,10 @@
 // SPDX-License-Identifier: BSD-3-Clause
 
 #include "StaticSolutionStateWrapper.h"
-#include "equations/DegreeOfFreedom.h"
 #include "pybind11/stl.h"
 #include "pybind11/eigen.h"
+#include "control/ParameterList.h"
+#include "DegreeOfFreedom.h"
 
 
 void HierAMuS::StaticSolutionStateWrapper::registerFunctions()

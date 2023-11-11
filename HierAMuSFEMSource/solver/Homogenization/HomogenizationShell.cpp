@@ -4,9 +4,12 @@
 #include "datatypes.h"
 #include "solver/Homogenization/HomogenizationShell.h"
 
-#include "equations/EquationHandler.h"
+//Equations
+#include "EquationHandler.h"
+
 #include "geometry/GeometryData.h"
 #include "geometry/GeometryTypes.h"
+#include "geometry/Faces/FacesData.h"
 
 #include "control/BinaryWrite.h"
 
@@ -60,7 +63,7 @@ void HomogenizationShell::init(PointerCollection &pointers,
   auto getFaceNumbers = [](PointerCollection &pointers, Types::Vector3<prec> &normal, Types::Vector3<prec> & point)
   {
     auto faces =
-        pointers.getGeometryData()->getFacesInPlane(pointers, normal, point);
+        pointers.getGeometryData()->getFacesInPlane(normal, point);
     std::vector<indexType> faceNums;
     indexType nfaces = faces.size();
     faceNums.resize(nfaces);
@@ -94,20 +97,20 @@ void HomogenizationShell::setDisplacementBoundaryConditions(
 
   Types::Vector3<indexType> dofs = {1, 1, 1};
   for(auto i : leftFaces){
-    auto face = pointers.getGeometryData()->getFace(i);
-    face->setBoundaryCondition(pointers, meshIdDisp, dispOrder, Geometry::ShapeFunctionTypes::H1, dofs, true);
+    auto face = pointers.getGeometryData()->getFaceData(i);
+    face->setBoundaryCondition(meshIdDisp, dispOrder, Geometry::ShapeFunctionTypes::H1, dofs, true);
   }
   for(auto i : rightFaces){
-    auto face = pointers.getGeometryData()->getFace(i);
-    face->setBoundaryCondition(pointers, meshIdDisp, dispOrder, Geometry::ShapeFunctionTypes::H1, dofs, true);
+    auto face = pointers.getGeometryData()->getFaceData(i);
+    face->setBoundaryCondition(meshIdDisp, dispOrder, Geometry::ShapeFunctionTypes::H1, dofs, true);
   }
   for(auto i : backFaces){
-    auto face = pointers.getGeometryData()->getFace(i);
-    face->setBoundaryCondition(pointers, meshIdDisp, dispOrder, Geometry::ShapeFunctionTypes::H1, dofs, true);
+    auto face = pointers.getGeometryData()->getFaceData(i);
+    face->setBoundaryCondition(meshIdDisp, dispOrder, Geometry::ShapeFunctionTypes::H1, dofs, true);
   }
   for(auto i : frontFaces){
-    auto face = pointers.getGeometryData()->getFace(i);
-    face->setBoundaryCondition(pointers, meshIdDisp, dispOrder, Geometry::ShapeFunctionTypes::H1, dofs, true);
+    auto face = pointers.getGeometryData()->getFaceData(i);
+    face->setBoundaryCondition(meshIdDisp, dispOrder, Geometry::ShapeFunctionTypes::H1, dofs, true);
   }
 
 }
@@ -123,11 +126,11 @@ void HomogenizationShell::computeAMatrix(PointerCollection &pointers) {
   if (bctype == 0) {
       for (auto j = 0; j < ffaces.size(); j++) {
           for (auto fNum : ffaces[j]) {
-              auto face = pointers.getGeometryData()->getFace(fNum);
+              auto face = pointers.getGeometryData()->getFaceData(fNum);
               indexType numV = face->getNumberOfVerts();
               for (indexType i = 0; i < numV; ++i) {
-                  auto vert = face->getVertex(pointers, i);
-                  auto Nodes = vert->getNodesOfSet(pointers, meshIdDisp);
+                  auto vert = face->getVertex(i);
+                  auto Nodes = vert->getNodesOfSet(meshIdDisp);
                   auto coor = vert->getCoordinates();
                   for (auto node : Nodes) {
 

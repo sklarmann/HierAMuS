@@ -7,7 +7,7 @@
 //
 
 #include "SpecialWrapper.h"
-#include "geometry/Special.h"
+#include "geometry/Special/Special.h"
 #include "geometry/GeometryData.h"
 #include "pybind11/stl.h"
 

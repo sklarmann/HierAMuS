@@ -5,31 +5,31 @@
 
 #pragma once
 
-#include "MatrixTypes.h"
-#include "finiteElements/beamInterfaceElement3D.h"
-#include "geometry/Base.h"
-#include "pointercollection/pointercollection.h"
+#include "elementFormulations/GenericElementFormulationInterface.h"
 #include "shapefunctions/IntegrationsPoints/IntegrationPoints.h"
-#include <forwarddeclaration.h>
-
-#include <elementFormulations/GenericElementFormulation.h>
-#include <Eigen/Dense>
 
 namespace HierAMuS {
+namespace FiniteElement {
+class beamInterfaceElement3D;
+}
+namespace Geometry {
+struct H1Shapes;
+}
 namespace Elementformulations {
 
-class EL302_BeamCoupling3D : public GenericElementFormulation {
+class EL302_BeamCoupling3D : public GenericElementFormulationInterface<FiniteElement::beamInterfaceElement3D> {
 public:
   EL302_BeamCoupling3D(PointerCollection *ptrCol);
   ~EL302_BeamCoupling3D() override;
   void readData(PointerCollection &pointers, ParameterList &list) override;
-  void setDegreesOfFreedom(PointerCollection& pointers, FiniteElement::GenericFiniteElement *elem) override;
-  void AdditionalOperations(PointerCollection& pointers, FiniteElement::GenericFiniteElement *elem) override;
+  void
+  setDegreesOfFreedom(PointerCollection &pointers,
+                      FiniteElement::beamInterfaceElement3D &elem) override;
+  void AdditionalOperations(PointerCollection& pointers, FiniteElement::beamInterfaceElement3D &elem) override;
   auto getDofs(PointerCollection& pointers, FiniteElement::GenericFiniteElement *elem)
   -> std::vector<DegreeOfFreedom *> override;
   void setTangentResidual(
-    PointerCollection& pointers,
-    FiniteElement::GenericFiniteElement *elem,
+    PointerCollection& pointers, FiniteElement::beamInterfaceElement3D &elem,
     Eigen::Matrix<prec, Eigen::Dynamic, Eigen::Dynamic> &stiffness,
     Eigen::Matrix<prec, Eigen::Dynamic, 1> &residual, std::vector<DegreeOfFreedom *> &Dofs) override;
 
@@ -38,7 +38,7 @@ public:
 
   // Paraview
   void toParaviewAdaper(PointerCollection &pointers,
-                                FiniteElement::GenericFiniteElement *elem,
+                                FiniteElement::beamInterfaceElement3D &elem,
                                 vtkPlotInterface &paraviewAdapter,
                                 ParaviewSwitch control) override;
 

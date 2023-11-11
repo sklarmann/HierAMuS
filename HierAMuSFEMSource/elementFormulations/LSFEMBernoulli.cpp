@@ -2,31 +2,28 @@
 //
 // SPDX-License-Identifier: BSD-3-Clause
 
-#include <elementFormulations/GenericElementFormulation.h>
-#include <elementFormulations/LSFEMBernoulli.h>
+#include "elementFormulations/GenericElementFormulation.h"
+#include "elementFormulations/LSFEMBernoulli.h"
 
-#include <finiteElements/GenericFiniteElement.h>
+#include "finiteElements/Edge.h"
 
-#include <geometry/Base.h>
-#include <geometry/Vertex.h>
+#include "geometry/GeometryBaseData.h"
+#include "geometry/VertexData.h"
 
 
-#include <equations/NodeSet.h>
-#include <equations/Nodetypes.h>
-#include <equations/GenericNodes.h>
-#include <equations/EquationHandler.h>
+#include "pointercollection/pointercollection.h"
+#include "solver/GenericSolutionState.h"
 
-#include <pointercollection/pointercollection.h>
-#include <solver/GenericSolutionState.h>
+#include "Eigen/Dense"
 
-#include <Eigen/Dense>
+#include "PropfunctionHandler.h"
 
-#include <loads/PropfunctionHandler.h>
+#include "control/ParameterList.h"
 
 namespace HierAMuS::Elementformulations {
 
 LSFEMBernoulli::LSFEMBernoulli(PointerCollection *ptrCol)
-    : GenericElementFormulation(ptrCol) {}
+    : GenericElementFormulationInterface(ptrCol) {}
 
 LSFEMBernoulli::~LSFEMBernoulli() = default;
 
@@ -34,6 +31,7 @@ void LSFEMBernoulli::readData(PointerCollection &pointers,
                               ParameterList &list) {
 
   this->meshIdDisp = list.getIndexVal("meshiddisp");
+  this->meshIdRot = list.getIndexVal("meshidrot");
   this->EA = list.getPrecVal("ea");
   this->EI = list.getPrecVal("ei");
   this->GA = list.getPrecVal("ga");
@@ -47,55 +45,27 @@ void LSFEMBernoulli::readData(PointerCollection &pointers,
   this->messageUnprocessed(pointers, list, "Element LSFEMBernoulli");
 }
 
-void LSFEMBernoulli::setDegreesOfFreedom(
-  PointerCollection& pointers, FiniteElement::GenericFiniteElement *elem) {
+void LSFEMBernoulli::AdditionalOperations(
+    PointerCollection &pointers, FiniteElement::Edge &elem) 
+{}
 
-  for (auto i = 0; i < 2; ++i) {
-    auto &geoTemp = elem->getVertex(pointers, i);
-    geoTemp.setNodeSet(pointers, this->meshIdDisp, 2,
-                        NodeTypes::displacement);
-  }
+void LSFEMBernoulli::setDegreesOfFreedom(PointerCollection &pointers,
+                                         FiniteElement::Edge &elem) {
+
+  elem.setH1Shapes(pointers, this->meshIdDisp, 1);
+  elem.setH1Shapes(pointers, this->meshIdRot, 1);
+
 }
 
 void LSFEMBernoulli::setTangentResidual(
   PointerCollection& pointers,
-  FiniteElement::GenericFiniteElement *elem,
+  FiniteElement::Edge &elem,
   Eigen::Matrix<prec, Eigen::Dynamic, Eigen::Dynamic> &stiffness,
   Eigen::Matrix<prec, Eigen::Dynamic, 1> &residual, std::vector<DegreeOfFreedom *> &Dofs) {
 
-  auto eqHandler = pointers.getEquationHandler();
-  NodeSet *set1, *set2;
-  auto &vert1 = elem->getVertex(pointers, 0);
-  auto &vert2 = elem->getVertex(pointers, 1);
-  set1 = vert1.getSetMeshId(pointers, this->meshIdDisp);
-  set2 = vert2.getSetMeshId(pointers, this->meshIdDisp);
-  std::vector<GenericNodes *> temp, Nodes;
-  eqHandler->getNodes(temp, *set1);
-  Nodes.push_back(temp[0]);
-  Nodes.push_back(temp[1]);
-  temp.clear();
-  eqHandler->getNodes(temp, *set2);
-  // set2->getNodes(this->ptrCol, temp);
-  Nodes.push_back(temp[0]);
-  Nodes.push_back(temp[1]);
 
-  std::vector<DegreeOfFreedom *> tempDofs;
-  Nodes[0]->getDegreesOfFreedom(pointers, tempDofs);
-  for (auto i = 0; i < 3; ++i) {
-    Dofs.push_back(tempDofs[i]);
-  }
-  Nodes[1]->getDegreesOfFreedom(pointers, tempDofs);
-  for (auto i = 0; i < 3; ++i) {
-    Dofs.push_back(tempDofs[i]);
-  }
-  Nodes[2]->getDegreesOfFreedom(pointers, tempDofs);
-  for (auto i = 0; i < 3; ++i) {
-    Dofs.push_back(tempDofs[i]);
-  }
-  Nodes[3]->getDegreesOfFreedom(pointers, tempDofs);
-  for (auto i = 0; i < 3; ++i) {
-    Dofs.push_back(tempDofs[i]);
-  }
+  auto &vert1 = elem.getVertex(pointers, 0);
+  auto &vert2 = elem.getVertex(pointers, 1);
 
   Types::Vector3<prec> coor1, coor2;
   coor1 = vert1.getCoordinates();
@@ -165,29 +135,12 @@ void LSFEMBernoulli::setMass(
   FiniteElement::GenericFiniteElement *elem,
   Eigen::Matrix<prec, Eigen::Dynamic, Eigen::Dynamic> &stiffness,
   Eigen::Matrix<prec, Eigen::Dynamic, 1> &residual, std::vector<DegreeOfFreedom *> &Dofs) {
-  auto eqHandler = pointers.getEquationHandler();
-  NodeSet *set1, *set2;
+  
   auto &vert1 = elem->getVertex(pointers, 0);
   auto &vert2 = elem->getVertex(pointers, 1);
-  set1 = vert1.getSetMeshId(pointers, this->meshIdDisp);
-  set2 = vert2.getSetMeshId(pointers, this->meshIdDisp);
-  std::vector<GenericNodes *> temp, Nodes;
-  eqHandler->getNodes(temp, *set1);
-  Nodes.push_back(temp[0]);
-  temp.clear();
-  eqHandler->getNodes(temp, *set2);
-  // set2->getNodes(*this->ptrCol, temp);
-  Nodes.push_back(temp[0]);
+  
 
-  std::vector<DegreeOfFreedom *> tempDofs;
-  Nodes[0]->getDegreesOfFreedom(pointers, tempDofs);
-  for (auto i = 0; i < 3; ++i) {
-    Dofs.push_back(tempDofs[i]);
-  }
-  Nodes[1]->getDegreesOfFreedom(pointers, tempDofs);
-  for (auto i = 0; i < 3; ++i) {
-    Dofs.push_back(tempDofs[i]);
-  }
+  elem->getH1Dofs(pointers, Dofs, this->meshIdDisp, 1);
 
   Types::Vector3<prec> coor1, coor2;
   coor1 = vert1.getCoordinates();
@@ -213,7 +166,7 @@ void LSFEMBernoulli::getElementsLocalNodalReactions(
   Eigen::Matrix<prec, Eigen::Dynamic, 1> residual;
   std::vector<DegreeOfFreedom *> Dofs;
 
-  this->setTangentResidual(pointers, elem, stiffness, residual, Dofs);
+  this->setTangentResidual(pointers, dynamic_cast<FiniteElement::Edge&>(*elem), stiffness, residual, Dofs);
 
   auto &gvert1 = elem->getVertex(pointers, 0);
   auto &gvert2 = elem->getVertex(pointers, 1);
@@ -269,7 +222,7 @@ auto LSFEMBernoulli::getNumberOfIntergrationPoints(
 }
 
 void LSFEMBernoulli::toParaviewAdaper(PointerCollection &pointers,
-                                      FiniteElement::GenericFiniteElement *elem,
+                                      FiniteElement::Edge &elem,
                                       vtkPlotInterface &paraviewAdapter,
                                       ParaviewSwitch control)
 {

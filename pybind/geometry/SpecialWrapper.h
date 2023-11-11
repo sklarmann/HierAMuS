@@ -12,7 +12,7 @@
 
 namespace py = pybind11;
 
-#include "geometry/Special.h"
+#include "geometry/Special/Special.h"
 
 
 namespace HierAMuS {
@@ -33,7 +33,8 @@ public:
   void registerFunctions();
 
 private:
-  typedef py::class_<Special, PySpecial, Base, std::shared_ptr<Special>>
+  typedef py::class_<Special, PySpecial, GeometryBaseData,
+                     std::shared_ptr<Special>>
       pw;
   pw temp;
 };

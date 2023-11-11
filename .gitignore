@@ -38,3 +38,5 @@ pyfemenv
 *.csv
 *.xlsx
 *.spdlog
+quadqs_statistics.json
+venv/

@@ -22,6 +22,7 @@ set(SOURCEFILES ${SOURCEFILES}
 			 ${CMAKE_CURRENT_SOURCE_DIR}/EL301_Piezo3DLinear.cpp
 			 ${CMAKE_CURRENT_SOURCE_DIR}/EL302_BeamCoupling3D.cpp
 			 ${CMAKE_CURRENT_SOURCE_DIR}/EL303_ThermoMechanikSolid3D.cpp
+			 ${CMAKE_CURRENT_SOURCE_DIR}/EL304_QPVolumeElement.cpp
 			 ${CMAKE_CURRENT_SOURCE_DIR}/EL307_VolumeConstraint.cpp
 			 ${CMAKE_CURRENT_SOURCE_DIR}/LSFEMBernoulli.cpp
 			 ${CMAKE_CURRENT_SOURCE_DIR}/EL290_PythonElement.cpp
@@ -29,6 +30,7 @@ set(SOURCEFILES ${SOURCEFILES}
 
 set(HEADERS ${HEADERS}
 	          ${CMAKE_CURRENT_SOURCE_DIR}/GenericElementFormulation.h
+	          ${CMAKE_CURRENT_SOURCE_DIR}/GenericElementFormulationInterface.h
 			  ${CMAKE_CURRENT_SOURCE_DIR}/EL101_Bernoulli2D.h
 			  ${CMAKE_CURRENT_SOURCE_DIR}/EL102_Timoshenko2D.h
 			  ${CMAKE_CURRENT_SOURCE_DIR}/EL103_Timoshenko3D.h
@@ -44,6 +46,7 @@ set(HEADERS ${HEADERS}
 			  ${CMAKE_CURRENT_SOURCE_DIR}/EL301_Piezo3DLinear.h
 			  ${CMAKE_CURRENT_SOURCE_DIR}/EL302_BeamCoupling3D.h
 			  ${CMAKE_CURRENT_SOURCE_DIR}/EL303_ThermoMechanikSolid3D.h
+			  ${CMAKE_CURRENT_SOURCE_DIR}/EL304_QPVolumeElement.h
 			  ${CMAKE_CURRENT_SOURCE_DIR}/EL307_VolumeConstraint.h
 			  ${CMAKE_CURRENT_SOURCE_DIR}/LSFEMBernoulli.h
 			  ${CMAKE_CURRENT_SOURCE_DIR}/EL290_PythonElement.h

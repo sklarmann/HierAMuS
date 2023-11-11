@@ -5,23 +5,23 @@
 
 #pragma once
 
-#include <forwarddeclaration.h>
-
-#include <elementFormulations/GenericElementFormulation.h>
-#include <Eigen/Dense>
+#include "elementFormulations/GenericElementFormulationInterface.h"
 
 namespace HierAMuS::Elementformulations {
 
-class EL301_Piezo3DLinear : public GenericElementFormulation {
+class EL301_Piezo3DLinear : public GenericElementFormulationInterface<FiniteElement::Volume> {
 public:
   explicit EL301_Piezo3DLinear(PointerCollection *ptrCol);
   ~EL301_Piezo3DLinear() override;
   void readData(PointerCollection &pointers, ParameterList &list) override;
-  void setDegreesOfFreedom(PointerCollection& pointers, FiniteElement::GenericFiniteElement *elem) override;
+  void setDegreesOfFreedom(PointerCollection &pointers,
+                           FiniteElement::Volume &elem) override;
+  void AdditionalOperations(PointerCollection &pointers,
+                            FiniteElement::Volume &elem) override;
   auto getDofs(PointerCollection& pointers, FiniteElement::GenericFiniteElement *elem) -> std::vector<DegreeOfFreedom*> override;
   void setTangentResidual(
     PointerCollection& pointers,
-    FiniteElement::GenericFiniteElement *elem,
+    FiniteElement::Volume &elem,
     Eigen::Matrix<prec, Eigen::Dynamic, Eigen::Dynamic> &stiffness,
     Eigen::Matrix<prec, Eigen::Dynamic, 1> &residual, std::vector<DegreeOfFreedom *> &Dofs) override;
 
@@ -31,7 +31,7 @@ public:
 
   // Plot
   void toParaviewAdaper(PointerCollection &pointers,
-                        FiniteElement::GenericFiniteElement *elem,
+                        FiniteElement::Volume &elem,
                         vtkPlotInterface &paraviewAdapter,
                         ParaviewSwitch control) override;
 

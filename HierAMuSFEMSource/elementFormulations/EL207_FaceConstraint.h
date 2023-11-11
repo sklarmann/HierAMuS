@@ -5,40 +5,39 @@
 
 #pragma once
 
-//#include <forwarddeclaration.h>
 #include "shapefunctions/IntegrationsPoints/IntegrationPoints.h"
-#include <elementFormulations/GenericElementFormulation.h>
+#include "elementFormulations/GenericElementFormulationInterface.h"
 
 
 namespace HierAMuS::Geometry{
   struct H1Shapes;
 }
-//#include <types/MatrixTypes.h>
 
-//#include <Eigen/Dense>
-
+namespace HierAMuS::FiniteElement {
+class FaceConstraint;
+}
 
 namespace HierAMuS::Elementformulations {
 
-class EL207_FaceConstraint : public GenericElementFormulation {
+class EL207_FaceConstraint : public GenericElementFormulationInterface<FiniteElement::FaceConstraint> {
 public:
   explicit EL207_FaceConstraint(PointerCollection *ptrCol);
   ~EL207_FaceConstraint() override;
   void readData(PointerCollection &pointers, ParameterList &list) override;
-  void setDegreesOfFreedom(PointerCollection& pointers, FiniteElement::GenericFiniteElement *elem) override;
-  void AdditionalOperations(PointerCollection& pointers, FiniteElement::GenericFiniteElement *elem) override;
+  void setDegreesOfFreedom(PointerCollection& pointers, FiniteElement::FaceConstraint &elem) override;
+  void AdditionalOperations(PointerCollection& pointers, FiniteElement::FaceConstraint &elem) override;
   auto getDofs(PointerCollection& pointers, FiniteElement::GenericFiniteElement *elem)
   -> std::vector<DegreeOfFreedom *> override;
   void setTangentResidual(
     PointerCollection& pointers,
-    FiniteElement::GenericFiniteElement *elem,
+    FiniteElement::FaceConstraint &elem,
     Eigen::Matrix<prec, Eigen::Dynamic, Eigen::Dynamic> &stiffness,
     Eigen::Matrix<prec, Eigen::Dynamic, 1> &residual, std::vector<DegreeOfFreedom *> &Dofs) override;
 
  
   // plot
   void toParaviewAdaper(PointerCollection &pointers,
-                                FiniteElement::GenericFiniteElement *elem,
+                                FiniteElement::FaceConstraint &elem,
                                 vtkPlotInterface &paraviewAdapter,
                                 ParaviewSwitch control) override;
 
@@ -50,7 +49,7 @@ private:
   
   void setTangentResidualDispFormulation(
     PointerCollection& pointers,
-    FiniteElement::GenericFiniteElement *elem,
+    FiniteElement::FaceConstraint &elem,
     Eigen::Matrix<prec, Eigen::Dynamic, Eigen::Dynamic> &stiffness,
     Eigen::Matrix<prec, Eigen::Dynamic, 1> &residual, std::vector<DegreeOfFreedom *> &Dofs);
   

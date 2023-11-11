@@ -46,8 +46,8 @@ class QuadrilateralNodal;
 //-----------------geometry------------------------------------------------
 namespace Geometry {
 class GeometryData;
-class Vertex;
-class Edges;
+class VertexData;
+class EdgesData;
 class LinearEdge;
 class Faces;
 class LinearTriangle;

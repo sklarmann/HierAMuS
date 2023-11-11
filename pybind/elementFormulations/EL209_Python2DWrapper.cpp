@@ -4,6 +4,7 @@
 
 #include "EL209_Python2DWrapper.h"
 #include "pointercollection/pointercollection.h"
+#include "control/ParameterList.h"
 
 namespace HierAMuS {
 namespace Elementformulations {

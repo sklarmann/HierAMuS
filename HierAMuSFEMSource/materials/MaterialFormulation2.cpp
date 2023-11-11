@@ -12,6 +12,8 @@
 #include <control/HandlingStructs.h>
 #include <pointercollection/pointercollection.h>
 
+#include "control/ParameterList.h"
+
 #include <string>
 
 #include "spdlog/fmt/ostr.h"

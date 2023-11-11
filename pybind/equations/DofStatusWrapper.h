@@ -7,7 +7,7 @@
 
 namespace py = pybind11;
 
-#include "equations/DofStatus.h"
+#include "DofStatus.h"
 
 namespace HierAMuS {
 

@@ -11,14 +11,12 @@ void EquationHandlerWrapper::registerFunctions() {
   this->temp.def(py::init<>())
       .def("update", &EquationHandler::update)
       .def("updateEquations",&EquationHandler::updateEquations)
-      .def("initSolutionState",&EquationHandler::initSolutionState)
       .def("getNumberOfTotalEquations",
            &EquationHandler::getNumberOfTotalEquations)
       .def("getNumberOfActiveEquations",
            &EquationHandler::getNumberOfActiveEquations)
       .def("getNumberOfInActiveEquations",
            &EquationHandler::getNumberOfInActiveEquations)
-      .def("print", &EquationHandler::print)
 	;
 }
 } // namespace HierAMuS

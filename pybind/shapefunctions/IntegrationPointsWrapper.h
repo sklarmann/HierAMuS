@@ -23,7 +23,9 @@ namespace HierAMuS {
 
 class IntegrationPointsWrapper {
 public:
-  IntegrationPointsWrapper(py::module &m) : temp(m, "IntegrationPoints"), types(m,"IntegrationType"), tempip(m,"IntegrationPoint"){};
+  IntegrationPointsWrapper(py::module &m)
+      : tempip(m, "IntegrationPoint"), temp(m, "IntegrationPoints"),
+        types(m, "IntegrationType"){};
   void registerFunctions();
 
 private:

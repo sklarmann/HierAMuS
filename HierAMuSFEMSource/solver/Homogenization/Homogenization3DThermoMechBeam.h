@@ -44,8 +44,9 @@ private:
   void setPeriodicBoundaryConditions(PointerCollection &pointers);
   void computeGeometryParameters(PointerCollection &pointers);
 
-
+  
   Types::MatrixXX<prec> homogenizationMatrix;
+  Types::MatrixXX<prec> homogenizationMatrixDisp;
 
   indexType meshIdDisp;
   indexType dispOrder;
@@ -57,11 +58,13 @@ private:
   std::vector<indexType> bottomFacesMaster, topFacesSlave;
   std::vector<indexType> backFacesMaster, frontFacesSlave;
 
+  std::vector<indexType> xEdges1, xEdges2, xEdges3, xEdges4;
+  std::vector<indexType> yEdges1, yEdges2, yEdges3, yEdges4;
+  std::vector<indexType> zEdges1, zEdges2, zEdges3, zEdges4;
+
   // corner vertices
   indexType v1, v2, v3, v4, v5, v6, v7, v8;
-
-  // edges
-  std::vector<indexType> xedges, yedges, zedges;
+  
 
   Types::Vector3<prec> xmin, xmax;
 };

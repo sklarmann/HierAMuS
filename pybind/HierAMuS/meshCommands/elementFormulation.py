@@ -217,6 +217,16 @@ class elementFormulation:
 
         self.elemformlist.addElementFormulation(self.mesh.program.ptr,num,303,paramList)
         
+    def addEL304_QPVolumeElement(self,num,meshiddisp,dispOrder,pressureOrder,mu,kappa):
+        paramList = HierAMuSPyFEM.ParameterList()
+        paramList.add("meshiddisp",meshiddisp)
+        paramList.add("disporder",dispOrder)
+        paramList.add("pressureorder",pressureOrder)
+        paramList.add("mu",mu)
+        paramList.add("kappa",kappa)
+
+        self.elemformlist.addElementFormulation(self.mesh.program.ptr,num,304,paramList)
+        
     def addEL307_VolumeConstraint(self,num,meshiddisp,meshIdLam,shapeorder,stiffness,center,mode=1):
         """_summary_
 

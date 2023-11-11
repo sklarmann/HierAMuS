@@ -6,24 +6,27 @@
 
 #pragma once
 
-#include <forwarddeclaration.h>
 
-#include <materials/GenericMaterialFormulation.h>
-#include <types/MatrixTypes.h>
+#include "materials/GenericMaterialFormulation.h"
+#include "types/MatrixTypes.h"
 
-namespace HierAMuS::Materials {
+namespace HierAMuS {
+namespace Materials {
 
 class MA1_LinearElastic_Isotrop : public GenericMaterialFormulation {
 public:
   explicit MA1_LinearElastic_Isotrop(PointerCollection *ptrCol);
   ~MA1_LinearElastic_Isotrop() override;
 
-  void readData(PointerCollection& pointers, ParameterList &list) override;
-  void getMaterialData(PointerCollection& pointers, MaterialTransferData &material_in_out, IntegrationPoint& ip) override;
+  void readData(PointerCollection &pointers, ParameterList &list) override;
+  void getMaterialData(PointerCollection &pointers,
+                       MaterialTransferData &material_in_out,
+                       IntegrationPoint &ip) override;
 
 private:
   prec m_emodul{}, m_nu{};
   Types::Matrix66<prec> m_material_tangent;
 };
 
+} // namespace Materials
 } // namespace HierAMuS

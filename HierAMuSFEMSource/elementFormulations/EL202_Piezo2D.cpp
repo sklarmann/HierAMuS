@@ -6,20 +6,16 @@
 
 
 
-#include <elementFormulations/EL202_Piezo2D.h>
+#include "elementFormulations/EL202_Piezo2D.h"
 
-#include <control/HandlingStructs.h>
-#include <control/OutputHandler.h>
-#include <pointercollection/pointercollection.h>
+#include "control/HandlingStructs.h"
+#include "control/OutputHandler.h"
+#include "control/ParameterList.h"
+#include "pointercollection/pointercollection.h"
 
-#include <equations/DegreeOfFreedom.h>
-#include <equations/GenericNodes.h>
-#include <equations/NodeSet.h>
-#include <equations/Nodetypes.h>
+#include <finiteElements/Face.h>
 
-#include <finiteElements/GenericFiniteElement.h>
-
-#include <geometry/Base.h>
+#include <geometry/GeometryBaseData.h>
 
 
 #include "shapefunctions/IntegrationsPoints/dataClasses/GaussPoints.h"
@@ -34,7 +30,7 @@
 namespace HierAMuS::Elementformulations {
 
 EL202_Piezo2D::EL202_Piezo2D(PointerCollection *ptrCol)
-    : GenericElementFormulation(ptrCol) {}
+    : GenericElementFormulationInterface(ptrCol) {}
 
 EL202_Piezo2D::~EL202_Piezo2D() = default;
 
@@ -54,7 +50,7 @@ void EL202_Piezo2D::readData(PointerCollection &pointers, ParameterList &list) {
   this->e15 = list.getPrecVal("e15");
 
 
-  auto Log = pointers.getSPDLogger();
+  auto &Log = pointers.getSPDLogger();
 
   Log.info("\n{:-<100}\n"
                 "*   Element 201, specified Options\n"
@@ -69,11 +65,14 @@ void EL202_Piezo2D::readData(PointerCollection &pointers, ParameterList &list) {
   this->messageUnprocessed(pointers, list, "EL202_Piezo2D");
 }
 
-void EL202_Piezo2D::setDegreesOfFreedom(
-  PointerCollection& pointers, FiniteElement::GenericFiniteElement *elem) {
+void EL202_Piezo2D::setDegreesOfFreedom(PointerCollection &pointers,
+                                        FiniteElement::Face &elem) {
 
-  elem->setH1Shapes(pointers, this->meshIdDisp, this->intOrderDisp);
+  elem.setH1Shapes(pointers, this->meshIdDisp, this->intOrderDisp);
 }
+
+void EL202_Piezo2D::AdditionalOperations(
+    PointerCollection &pointers, FiniteElement::Face &elem) {}
 
 auto EL202_Piezo2D::getDofs(PointerCollection& pointers, FiniteElement::GenericFiniteElement *elem) -> std::vector<DegreeOfFreedom *>
 {
@@ -92,7 +91,7 @@ auto EL202_Piezo2D::getNumberOfIntergrationPoints(
 }
 
 void EL202_Piezo2D::toParaviewAdaper(PointerCollection &pointers,
-                                     FiniteElement::GenericFiniteElement *elem,
+                                     FiniteElement::Face &elem,
                                      vtkPlotInterface &paraviewAdapter,
                                      ParaviewSwitch control)
 {
@@ -100,7 +99,7 @@ void EL202_Piezo2D::toParaviewAdaper(PointerCollection &pointers,
 }
 
 void EL202_Piezo2D::setTangentResidual(
-  PointerCollection& pointers, FiniteElement::GenericFiniteElement *elem,
+  PointerCollection& pointers, FiniteElement::Face &elem,
   Types::MatrixXX<prec> &stiffness, Types::VectorX<prec> &residual, std::vector<DegreeOfFreedom *> &Dofs) {
   
   Types::MatrixXX<prec> Bmat;
@@ -108,7 +107,7 @@ void EL202_Piezo2D::setTangentResidual(
   Types::VectorX<prec> solution;
 
   Dofs.clear();
-  elem->getH1Dofs(pointers, Dofs, this->meshIdDisp, this->intOrderDisp);
+  elem.getH1Dofs(pointers, Dofs, this->meshIdDisp, this->intOrderDisp);
 
   auto numDofs = static_cast<indexType>(Dofs.size());
 
@@ -118,7 +117,7 @@ void EL202_Piezo2D::setTangentResidual(
   residual.resize(numDofs);
   residual.setZero();
 
-  elem->getSolution(pointers, Dofs, solution);
+  elem.getSolution(pointers, Dofs, solution);
 
   material.resize(5, 5);
   material.setZero();
@@ -147,13 +146,13 @@ void EL202_Piezo2D::setTangentResidual(
   Bmat.resize(5, numDofs);
   Bmat.setZero();
   
-  auto GP = elem->getIntegrationPoints(pointers);
+  auto GP = elem.getIntegrationPoints(pointers);
   GP.setOrder(this->intOrderDisp * 2);
 
   for (auto ip : GP)
   {
-    auto jaco = elem->getJacobian(pointers, ip);
-    auto shapes = elem->getH1Shapes(pointers, this->intOrderDisp, jaco, ip);
+    auto jaco = elem.getJacobian(pointers, ip);
+    auto shapes = elem.getH1Shapes(pointers, this->intOrderDisp, jaco, ip);
     for (auto j = 0; j < numDofs / 3; ++j) {
       Bmat(0, j * 3)     = shapes.shapeDeriv(0, j);
       Bmat(1, j * 3 + 1) = shapes.shapeDeriv(1, j);

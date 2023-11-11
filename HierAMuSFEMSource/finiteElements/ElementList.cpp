@@ -4,12 +4,19 @@
 
 
 
-#include <forwarddeclaration.h>
 
-#include <finiteElements/ElementList.h>
-#include <finiteElements/GenericFiniteElement.h>
-#include "equations/EquationHandler.h"
-#include <geometry/GeometryData.h>
+#include "finiteElements/ElementList.h"
+#include "finiteElements/Edge.h"
+#include "finiteElements/Face.h"
+#include "finiteElements/Volume.h"
+#include "finiteElements/FaceConstraint.h"
+#include "finiteElements/VolumeConstraint.h"
+#include "finiteElements/beamInterfaceElement2D.h"
+#include "plot/vtkplotClassBase.h"
+#include "plot/vtkplotClass.h"
+#include "EquationHandler.h"
+#include "geometry/GeometryData.h"
+#include "solver/GenericSolutionState.h"
 #include <iostream>
 #include <vector>
 
@@ -24,65 +31,28 @@ ElementList::~ElementList() {
 auto ElementList::requestNewElement(PointerCollection& pointers, Elementtypes type)
 -> FiniteElement::GenericFiniteElement * {
 
-  FiniteElement::GenericFiniteElement *temp = nullptr;
 
-  indexType number;
+  indexType number = m_elements.size();
   switch (type) {
   case Elementtypes::Edge:
-    number = static_cast<indexType>(this->edgeElements.size());
-    this->elementIndex.push_back(number);
-    this->elementTypes.push_back(type);
-    number = static_cast<indexType>(this->elementTypes.size()) - 1;
-    this->edgeElements.emplace_back();
-    temp = &this->edgeElements.back();
-    temp->setId(number);
+    m_elements.emplace_back(std::make_shared<Edge>());
     break;
   case Elementtypes::Face:
-    number = static_cast<indexType>(this->faceElements.size());
-    this->elementIndex.push_back(number);
-    this->elementTypes.push_back(type);
-    number = static_cast<indexType>(this->elementTypes.size()) - 1;
-    this->faceElements.emplace_back();
-    temp = &this->faceElements.back();
-    temp->setId(number);
+    m_elements.emplace_back(std::make_shared<Face>());
     break;
   case Elementtypes::FaceConstraint:
-    number = static_cast<indexType>(this->faceConstraintElements.size());
-    this->elementIndex.push_back(number);
-    this->elementTypes.push_back(type);
-    number = static_cast<indexType>(this->elementTypes.size()) - 1;
-    this->faceConstraintElements.emplace_back();
-    temp = &this->faceConstraintElements.back();
-    temp->setId(number);
+    m_elements.emplace_back(std::make_shared<FaceConstraint>());
     break;
   case Elementtypes::Volume:
-    number = static_cast<indexType>(this->volumeElements.size());
-    this->elementIndex.push_back(number);
-    this->elementTypes.push_back(type);
-    number = static_cast<indexType>(this->elementTypes.size()) - 1;
-    this->volumeElements.emplace_back();
-    temp = &this->volumeElements.back();
-    temp->setId(number);
+    m_elements.emplace_back(std::make_shared<Volume>());
     break;
   case Elementtypes::VolumeConstraint:
-    number = static_cast<indexType>(this->volumeConstraintElements.size());
-    this->elementIndex.push_back(number);
-    this->elementTypes.push_back(type);
-    number = static_cast<indexType>(this->elementTypes.size()) - 1;
-    this->volumeConstraintElements.emplace_back();
-    temp = &this->volumeConstraintElements.back();
-    temp->setId(number);
+    m_elements.emplace_back(std::make_shared<VolumeConstraint>());
     break;
   case Elementtypes::beamInterfaceElement2D:
-    number = static_cast<indexType>(this->beamInterface2D.size());
-    this->elementIndex.push_back(number);
-    this->elementTypes.push_back(type);
-    number = static_cast<indexType>(this->elementTypes.size()) - 1;
-    this->beamInterface2D.emplace_back();
-    temp = &this->beamInterface2D.back();
-    temp->setId(number);
+    m_elements.emplace_back(std::make_shared<beamInterfaceElement2D>());
     break;
-  case Elementtypes::beamInterfaceElement3D:
+    /*case Elementtypes::beamInterfaceElement3D:
     number = static_cast<indexType>(this->beamInterface3D.size());
     this->elementIndex.push_back(number);
     this->elementTypes.push_back(type);
@@ -98,7 +68,7 @@ auto ElementList::requestNewElement(PointerCollection& pointers, Elementtypes ty
     number = static_cast<indexType>(this->elementTypes.size()) - 1;
     this->linearPrisms.emplace_back();
     temp = &this->linearPrisms.back();
-    temp->setId(number);
+    temp->setId(number);*/
 
     break;
   case Elementtypes::Generic:
@@ -107,60 +77,42 @@ auto ElementList::requestNewElement(PointerCollection& pointers, Elementtypes ty
   default:
     break;
   }
-  return temp;
+  m_elements.back()->setId(number);
+  return &(*m_elements.back());
 }
 
-auto ElementList::getElement(indexType number)
+auto ElementList::getElement(PointerCollection & pointers, indexType number)
     -> FiniteElement::GenericFiniteElement * {
-  if (static_cast<std::size_t>(number) >= this->elementIndex.size()) {
-    // TODO throw exception
-  }
 
-  switch (this->elementTypes[number]) {
-  case Elementtypes::Edge:
-    return &this->edgeElements[this->elementIndex[number]];
-    break;
-  case Elementtypes::Face:
-    return &this->faceElements[this->elementIndex[number]];
-    break;
-  case Elementtypes::FaceConstraint:
-    return &this->faceConstraintElements[this->elementIndex[number]];
-    break;
-  case Elementtypes::Volume:
-    return &this->volumeElements[this->elementIndex[number]];
-    break;
-  case Elementtypes::VolumeConstraint:
-    return &this->volumeConstraintElements[this->elementIndex[number]];
-    break;
-  case Elementtypes::beamInterfaceElement2D:
-    return &this->beamInterface2D[this->elementIndex[number]];
-    break;
-  case Elementtypes::beamInterfaceElement3D:
-    return &this->beamInterface3D[this->elementIndex[number]];
-    break;
-  case Elementtypes::LinearPrism:
-    return &this->linearPrisms[this->elementIndex[number]];
-    break;
-  default:
-    throw std::runtime_error(
-        "Error in elementlist getElement. Requested element not in list!");
-    return nullptr;
-  }
-  return nullptr;
+  m_elements[number]->set_pointers(pointers);
+  return &(*m_elements[number]);
+  
 }
 
 
 void ElementList::setDegreesOfFreedom(PointerCollection& pointers){
-  indexType numElems = this->getNumberOfElements();
+  pointers.getGeometryData()->createRuntimeObjects();
   pointers.getSolutionState()->setupHistoryData(pointers);
-  for(auto i=0; i<numElems; i++){
-    this->getElement(i)->GenericSetDegreesOfFreedom(pointers);
+  for (auto &i : m_elements) {
+    i->set_pointers(pointers);
+    i->GenericSetDegreesOfFreedom(pointers);
   }
   pointers.getEquationHandler()->update();
   pointers.getEquationHandler()->updateEquations();
-  for(auto i=0; i<numElems; i++){
-    this->getElement(i)->GenericAdditionalOperations(pointers);
+  pointers.getGeometryData()->updateRuntimeObjectEquations();
+  for (auto &i : m_elements) {
+    i->set_pointers(pointers);
+    i->GenericAdditionalOperations(pointers);
   }
+  pointers.getSPDLogger().info((*pointers.getEquationHandler()));
+}
+
+auto ElementList::getNumberOfElements() -> indexType {
+  return indexType(this->m_elements.size());
+}
+
+void FiniteElement::ElementList::print(PointerCollection &pointers) {
+  //indexType numElems = this->getNumberOfElements();
 }
 
 } // namespace HierAMuS::FiniteElement

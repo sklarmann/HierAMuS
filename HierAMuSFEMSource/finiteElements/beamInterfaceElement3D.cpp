@@ -6,13 +6,15 @@
 
 #include "MatrixTypes.h"
 #include "datatypes.h"
-#include "equations/DegreeOfFreedom.h"
-#include "equations/Nodetypes.h"
+#include "GenericNodes.h"
 #include "pointercollection/pointercollection.h"
+
+#include "solver/GenericSolutionState.h"
 
 #include "materials/MaterialformulationList.h"
 
-#include "geometry/BeamInterface3D.h"
+#include "geometry/Special/BeamInterface3D.h"
+#include "geometry/Faces/FacesData.h"
 #include "geometry/GeometryData.h"
 #include "shapefunctions/IntegrationsPoints/IntegrationPoints.h"
 #include "shapefunctions/LegendreShapes.h"
@@ -54,17 +56,17 @@ void beamInterfaceElement3D::setH1Shapes(PointerCollection &pointers,
 
   auto geometryData = pointers.getGeometryData();
   {
-    auto face = geometryData->getFace(m_faces[0]);
-    auto V1 = face->getVertex(pointers,0);
+    auto face = geometryData->getFaceData(m_faces[0]);
+    auto V1 = face->getVertex(0);
     minFaceVertNumber = V1->getId();
     maxFaceVertNumber = minFaceVertNumber;
   }
   for (auto i : m_faces) {
-    auto face = geometryData->getFace(i);
-    face->setH1Shapes(pointers, meshIdDisp, dispOrder, NodeTypes::displacement);
+    auto face = geometryData->getFaceData(i);
+    face->setH1Shapes(meshIdDisp, dispOrder, NodeTypes::displacement);
     for (auto j=0;j<face->getNumberOfVerts();++j)
     {
-      auto V1 = face->getVertex(pointers, j);
+      auto V1 = face->getVertex(j);
       auto VId = V1->getId();
       if (minFaceVertNumber > VId)
         minFaceVertNumber = VId;
@@ -72,9 +74,9 @@ void beamInterfaceElement3D::setH1Shapes(PointerCollection &pointers,
         maxFaceVertNumber = VId;
     }
   }
-  auto &vert = geometryData->getVertex(m_beamVertex);
-  vert.setNodeSet(pointers, meshIdDisp, 1, NodeTypes::displacement);
-  vert.setNodeSet(pointers, meshIdRot, 1, NodeTypes::displacement);
+  auto &vert = geometryData->getVertexData(m_beamVertex);
+  vert.setNodeSet(meshIdDisp, 1, NodeTypes::displacement);
+  vert.setNodeSet(meshIdRot, 1, NodeTypes::displacement);
 
   m_H1MeshId = meshIdDisp;
   m_MeshIdRot = meshIdRot;
@@ -85,8 +87,8 @@ auto beamInterfaceElement3D::getIntegrationPoints(ptrCol &pointers)
     -> IntegrationPoints {
 
   auto GP = pointers.getGeometryData()
-                ->getFace(m_faces[0])
-                ->getIntegrationPoints(pointers, this->id);
+                ->getFaceData(m_faces[0])
+                ->getIntegrationPoints(this->m_id);
   GP.setType(IntegrationType::Scaled3D);
   GP.setNumberOfSections(m_faces.size());
   return GP;
@@ -132,15 +134,15 @@ void beamInterfaceElement3D::computeWarpingShapes(PointerCollection &pointers) {
   prec I23 = prec(0);
 
   for (auto i : GP) {
-    auto face = pointers.getGeometryData()->getFace(m_faces[i.sectionNumber]);
-    auto Nodes = face->getH1Nodes(pointers, m_H1MeshId, m_warpOrder);
+    auto face = pointers.getGeometryData()->getFaceData(m_faces[i.sectionNumber]);
+    auto Nodes = face->getH1Nodes(m_H1MeshId, m_warpOrder);
     auto jacobi = this->getJacobian(pointers, i);
     auto localCoord = this->getLocalCoordinate(pointers, i);
     IntegrationPoint faceip;
     faceip.xi = i.eta;
     faceip.eta = i.zeta;
 
-    auto H1Shapes = face->getH1Shapes(pointers, m_warpOrder, faceip);
+    auto H1Shapes = face->getH1Shapes(m_warpOrder, faceip);
 
     auto dA = jacobi.block(1, 1, 2, 2).determinant() * i.weight;
     dA = abs(dA);
@@ -236,23 +238,23 @@ void beamInterfaceElement3D::computeWarpingShapes(PointerCollection &pointers) {
   }
   indexType totWarpDispFuncs = m_numberOfWarpingShapes * 3;
   { // First vertex, all Nodes are fixed
-    auto &vt = pointers.getGeometryData()->getVertex(m_vertMain);
-    auto NN = vt.getNodesOfSet(pointers, m_H1MeshId);
+    auto &vt = pointers.getGeometryData()->getVertexData(m_vertMain);
+    auto NN = vt.getNodesOfSet(m_H1MeshId);
     indexType pos = m_nodeShapeMapping[NN[0]->getId()];
     m_warpEqIds[pos * 3] = totWarpDispFuncs - 1;
     m_warpEqIds[pos * 3 + 1] = totWarpDispFuncs - 2;
     m_warpEqIds[pos * 3 + 2] = totWarpDispFuncs - 3;
   }
   { // Second vertex, x and z dofs are fixed
-    auto &vt = pointers.getGeometryData()->getVertex(m_vertX2);
-    auto NN = vt.getNodesOfSet(pointers, m_H1MeshId);
+    auto &vt = pointers.getGeometryData()->getVertexData(m_vertX2);
+    auto NN = vt.getNodesOfSet(m_H1MeshId);
     indexType pos = m_nodeShapeMapping[NN[0]->getId()];
     m_warpEqIds[pos * 3] = totWarpDispFuncs - 4;
     m_warpEqIds[pos * 3 + 2] = totWarpDispFuncs - 5;
   }
   { // Third vertex, x dof is fixed
-    auto &vt = pointers.getGeometryData()->getVertex(m_vertX3);
-    auto NN = vt.getNodesOfSet(pointers, m_H1MeshId);
+    auto &vt = pointers.getGeometryData()->getVertexData(m_vertX3);
+    auto NN = vt.getNodesOfSet(m_H1MeshId);
     indexType pos = m_nodeShapeMapping[NN[0]->getId()];
     m_warpEqIds[pos * 3] = totWarpDispFuncs - 6;
   }
@@ -306,13 +308,13 @@ auto beamInterfaceElement3D::getWarpingShapes(
     retVal.omega3Deriv.setZero();
   }
 
-  auto face = pointers.getGeometryData()->getFace(
+  auto face = pointers.getGeometryData()->getFaceData(
       m_faces[integrationPoint.sectionNumber]);
-  auto Nodes = face->getH1Nodes(pointers, m_H1MeshId, m_warpOrder);
+  auto Nodes = face->getH1Nodes(m_H1MeshId, m_warpOrder);
   IntegrationPoint faceIp;
   faceIp.xi = integrationPoint.eta;
   faceIp.eta = integrationPoint.zeta;
-  auto localShapes = face->getH1Shapes(pointers, m_warpOrder, faceIp);
+  auto localShapes = face->getH1Shapes(m_warpOrder, faceIp);
 
   Types::Matrix22<prec> jacobi2D = jacobi.block(1, 1, 2, 2);
   Types::Matrix22<prec> jacobi2Dinv = jacobi2D.inverse();
@@ -393,10 +395,10 @@ auto beamInterfaceElement3D::getH1Dofs(ptrCol &pointers, indexType meshIDdisp,
   std::vector<DegreeOfFreedom *> Dofs;
   Dofs.resize(m_numberOfWarpingShapes * 3 + 6);
   for (auto i : m_faces) {
-    auto face = pointers.getGeometryData()->getFace(i);
-    auto nodes = face->getH1Nodes(pointers, meshIDdisp, order);
+    auto face = pointers.getGeometryData()->getFaceData(i);
+    auto nodes = face->getH1Nodes(meshIDdisp, order);
     for (auto j : nodes) {
-      auto tempDof = j->getDegreesOfFreedom(pointers);
+      auto tempDof = j->getDegreesOfFreedom();
       indexType startpos = m_nodeShapeMapping[j->getId()] * 3;
       for (auto k : tempDof) {
         Dofs[startpos] = k;
@@ -404,16 +406,16 @@ auto beamInterfaceElement3D::getH1Dofs(ptrCol &pointers, indexType meshIDdisp,
       }
     }
   }
-  auto vert = pointers.getGeometryData()->getVertex(m_beamVertex);
-  auto tn = vert.getNodesOfSet(pointers, meshIDdisp);
-  auto tdof = tn[0]->getDegreesOfFreedom(pointers);
+  auto vert = pointers.getGeometryData()->getVertexData(m_beamVertex);
+  auto tn = vert.getNodesOfSet(meshIDdisp);
+  auto tdof = tn[0]->getDegreesOfFreedom();
   indexType startpos = m_numberOfWarpingShapes * 3;
   for (auto j : tdof) {
     Dofs[startpos] = j;
     ++startpos;
   }
-  tn = vert.getNodesOfSet(pointers, meshIDrot);
-  tdof = tn[0]->getDegreesOfFreedom(pointers);
+  tn = vert.getNodesOfSet(meshIDrot);
+  tdof = tn[0]->getDegreesOfFreedom();
   for (auto j : tdof) {
     Dofs[startpos] = j;
     ++startpos;
@@ -581,12 +583,12 @@ auto beamInterfaceElement3D::getBMatrixWarpingLocal(
     PointerCollection &pointers, IntegrationPoint &ip, indexType meshId,
     indexType order, Types::MatrixXX<prec> &jacobi) -> Types::Matrix6X<prec> {
   auto face =
-      pointers.getGeometryData()->getFace(this->m_faces[ip.sectionNumber]);
-  auto Nodes = face->getH1Nodes(pointers, meshId, order);
+      pointers.getGeometryData()->getFaceData(this->m_faces[ip.sectionNumber]);
+  auto Nodes = face->getH1Nodes(meshId, order);
   auto localCoord = this->getLocalCoordinate(pointers, ip);
   IntegrationPoint faceip;
 
-  Types::Vector3<prec> normal = face->getFaceNormal(pointers);
+  Types::Vector3<prec> normal = face->getFaceNormal();
   indexType beamShapeNumber = 1;
   prec beamFact = 1.0;
   if (normal.dot(m_A1) < 0.0) {
@@ -597,7 +599,7 @@ auto beamInterfaceElement3D::getBMatrixWarpingLocal(
 
   faceip.xi = ip.eta;
   faceip.eta = ip.zeta;
-  auto localShapesT = face->getH1Shapes(pointers, m_warpOrder, faceip);
+  auto localShapesT = face->getH1Shapes(m_warpOrder, faceip);
 
   auto sh = LobattoShapes::getShape(ip.xi, beamShapeNumber);
 
@@ -638,7 +640,7 @@ auto beamInterfaceElement3D::getBMatrixWarpingLocal(
 
 
   // Adding quadrilateral shape functions NS_hat
-  for (indexType i = 0; i < Nodes.size(); ++i) {
+  for (indexType i = 0; i < static_cast<indexType>(Nodes.size()); ++i) {
     auto NN = Nodes[i];
     auto localId = m_nodeShapeMapping[NN->getId()];
     indexType pos = localId * 3;
@@ -727,13 +729,13 @@ auto beamInterfaceElement3D::getBMatrixWarpingLocal2(
   faceIp.xi = ip.eta;
   faceIp.eta = ip.zeta;
 
-  auto face = pointers.getGeometryData()->getFace(m_faces[ip.sectionNumber]);
-  auto FaceShapes = face->getH1Shapes(pointers, order, faceIp);
-  auto FaceNodes = face->getH1Nodes(pointers, m_H1MeshId, order);
+  auto face = pointers.getGeometryData()->getFaceData(m_faces[ip.sectionNumber]);
+  auto FaceShapes = face->getH1Shapes(order, faceIp);
+  auto FaceNodes = face->getH1Nodes(m_H1MeshId, order);
   FaceShapes.shapeDeriv =
       jacobi.block<2, 2>(1, 1).inverse().transpose() * FaceShapes.shapeDeriv;
 
-  for (indexType i = 0; i < FaceNodes.size();++i)
+  for (indexType i = 0; i < static_cast<indexType>(FaceNodes.size());++i)
   {
     indexType pos = m_nodeShapeMapping[FaceNodes[i]->getId()] * 3;
     B.block<1,3>(1,pos)    = FaceShapes.shapeDeriv(0, i) * m_A2.transpose();
@@ -819,13 +821,13 @@ auto beamInterfaceElement3D::getBMatrixWarpingLocal2(
 auto beamInterfaceElement3D::getWarpDofConstraint(PointerCollection &pointers)
     -> std::set<indexType> {
   // Computing columns to remove from B
-  auto &v1 = pointers.getGeometryData()->getVertex(m_vertMain);
-  auto &v2 = pointers.getGeometryData()->getVertex(m_vertX2);
-  auto &v3 = pointers.getGeometryData()->getVertex(m_vertX3);
+  auto &v1 = pointers.getGeometryData()->getVertexData(m_vertMain);
+  auto &v2 = pointers.getGeometryData()->getVertexData(m_vertX2);
+  auto &v3 = pointers.getGeometryData()->getVertexData(m_vertX3);
 
-  auto N1 = v1.getNodesOfSet(pointers, m_H1MeshId);
-  auto N2 = v2.getNodesOfSet(pointers, m_H1MeshId);
-  auto N3 = v3.getNodesOfSet(pointers, m_H1MeshId);
+  auto N1 = v1.getNodesOfSet(m_H1MeshId);
+  auto N2 = v2.getNodesOfSet(m_H1MeshId);
+  auto N3 = v3.getNodesOfSet(m_H1MeshId);
   std::set<indexType> removeCols;
   // Main vertex columns
   indexType pos1 = m_nodeShapeMapping[N1[0]->getId()] * 3;
@@ -859,21 +861,21 @@ void beamInterfaceElement3D::geometryToParaview(
   indexType cc=1;
   for (auto ff : m_faces)
   {
-    auto face = pointers.getGeometryData()->getFace(ff);
+    auto face = pointers.getGeometryData()->getFaceData(ff);
     indexType nVerts = face->getNumberOfVerts();
     for (indexType nn=0;nn<nVerts;++nn)
     {
-      auto V1 = face->getVertex(pointers, nn);
-      V1->geometryToParaview(pointers, paraviewAdapter, mainMesh, subMesh);
-      Geometry::Vertex V2;
+      auto V1 = face->getVertex(nn);
+      V1->geometryToParaview(paraviewAdapter, mainMesh, subMesh);
+      Geometry::VertexData V2;
       V2.setCoordinates(V1->getCoordinates() + m_A1 * m_length);
-      V2.setId(V1->getId() + maxFaceVertNumber);
+      V2.set_id(V1->getId() + maxFaceVertNumber);
       points[nn] = V1->getId();
       points[nn + 4] = V2.getId();
-      V1->geometryToParaview(pointers, paraviewAdapter, mainMesh, subMesh);
-      V2.geometryToParaview(pointers, paraviewAdapter, mainMesh, subMesh);
+      V1->geometryToParaview(paraviewAdapter, mainMesh, subMesh);
+      V2.geometryToParaview(paraviewAdapter, mainMesh, subMesh);
     }
-    paraviewAdapter.addCell(mainMesh, subMesh, this->id, cc, points, numPoints,
+    paraviewAdapter.addCell(mainMesh, subMesh, this->m_id, cc, points, numPoints,
                             VTK_HEXAHEDRON);
     cc++;
   }
@@ -888,11 +890,11 @@ void beamInterfaceElement3D::H1SolutionToParaview(
     indexType mainMesh, indexType subMesh, indexType meshId, indexType order,
     std::string name)
 {
-  auto &BeamVert = pointers.getGeometryData()->getVertex(m_beamVertex);
-  auto beamDispNodes = BeamVert.getNodesOfSet(pointers, m_H1MeshId);
-  auto beamRotNodes = BeamVert.getNodesOfSet(pointers, m_MeshIdRot);
-  auto beamDispDofs = beamDispNodes[0]->getDegreesOfFreedom(pointers);
-  auto beamRotDofs = beamRotNodes[0]->getDegreesOfFreedom(pointers);
+  auto &BeamVert = pointers.getGeometryData()->getVertexData(m_beamVertex);
+  auto beamDispNodes = BeamVert.getNodesOfSet(m_H1MeshId);
+  auto beamRotNodes = BeamVert.getNodesOfSet(m_MeshIdRot);
+  auto beamDispDofs = beamDispNodes[0]->getDegreesOfFreedom();
+  auto beamRotDofs = beamRotNodes[0]->getDegreesOfFreedom();
   Types::Vector3<prec> beamDispSol =
       pointers.getSolutionState()->getSolution(beamDispDofs);
   Types::Vector3<prec> beamRotSol =
@@ -910,17 +912,17 @@ void beamInterfaceElement3D::H1SolutionToParaview(
 
   for (auto nf : m_faces)
   {
-    auto face = pointers.getGeometryData()->getFace(nf);
-    auto fDofs = face->getH1Dofs(pointers, m_H1MeshId, 1);
+    auto face = pointers.getGeometryData()->getFaceData(nf);
+    auto fDofs = face->getH1Dofs(m_H1MeshId, 1);
     Types::VectorX<prec> fSol = pointers.getSolutionState()->getSolution(fDofs);
     for (auto nV=0;nV<face->getNumberOfVerts();++nV)
     {
-      auto V1 = face->getVertex(pointers, nV);
+      auto V1 = face->getVertex(nV);
       Types::Vector3<prec> cCoor = V1->getCoordinates() - m_projectedCoordinate;
       cCoor = R0 * cCoor;
       indexType idA = V1->getId();
       indexType idB = idA + maxFaceVertNumber;
-      auto VNodes = V1->getNodesOfSet(pointers, m_H1MeshId);
+      auto VNodes = V1->getNodesOfSet(m_H1MeshId);
       Types::Vector3<prec> VSol =
           pointers.getSolutionState()->getSolution(*VNodes[0]);
       std::vector<prec> solVec(3);
@@ -973,11 +975,11 @@ void beamInterfaceElement3D::createNodeShapeMapping(
     PointerCollection &pointers) {
   indexType ns = 0;
   for (auto faceId : m_faces) {
-    auto face = pointers.getGeometryData()->getFace(faceId);
+    auto face = pointers.getGeometryData()->getFaceData(faceId);
     for (auto i = 0; i < face->getNumberOfVerts(); ++i) {
-      auto Vert = face->getVertex(pointers, i);
+      auto Vert = face->getVertex(i);
       std::vector<GenericNodes *> Nodes;
-      Vert->getNodes(pointers, Nodes, m_H1MeshId);
+      Vert->getNodes(Nodes, m_H1MeshId);
       for (auto &node : Nodes) {
         if (m_nodeShapeMapping.find(node->getId()) ==
             m_nodeShapeMapping.end()) {
@@ -988,8 +990,8 @@ void beamInterfaceElement3D::createNodeShapeMapping(
     }
   }
   for (auto faceId : m_faces) {
-    auto face = pointers.getGeometryData()->getFace(faceId);
-    auto Nodes = face->getH1Nodes(pointers, m_H1MeshId, m_warpOrder);
+    auto face = pointers.getGeometryData()->getFaceData(faceId);
+    auto Nodes = face->getH1Nodes(m_H1MeshId, m_warpOrder);
     // auto Vert=  face->getVertex(pointers, 0);
     for (auto &node : Nodes) {
       if (m_nodeShapeMapping.find(node->getId()) == m_nodeShapeMapping.end()) {
@@ -1002,13 +1004,13 @@ void beamInterfaceElement3D::createNodeShapeMapping(
 }
 
 void beamInterfaceElement3D::computeGeometry(PointerCollection &pointers) {
-  auto face = pointers.getGeometryData()->getFace(m_faces[0]);
+  auto face = pointers.getGeometryData()->getFaceData(m_faces[0]);
   Types::Vector3<prec> x1;
   Types::Vector3<prec> x2;
   Types::Vector3<prec> x3;
-  x1 = face->getVertex(pointers, 0)->getCoordinates();
-  x2 = face->getVertex(pointers, 1)->getCoordinates();
-  x3 = face->getVertex(pointers, 2)->getCoordinates();
+  x1 = face->getVertex(0)->getCoordinates();
+  x2 = face->getVertex(1)->getCoordinates();
+  x3 = face->getVertex(2)->getCoordinates();
 
   // compute the local basis system on the surface.
   m_A2 = x2 - x1;
@@ -1022,7 +1024,7 @@ void beamInterfaceElement3D::computeGeometry(PointerCollection &pointers) {
 
   // compute the projected coordinate.
   Types::Vector3<prec> beam_coordinate =
-      pointers.getGeometryData()->getVertex(m_beamVertex).getCoordinates();
+      pointers.getGeometryData()->getVertexData(m_beamVertex).getCoordinates();
   Types::Vector3<prec> temp = beam_coordinate - x1;
   m_length = temp.dot(m_A1);
 
@@ -1115,12 +1117,12 @@ auto beamInterfaceElement3D::getL2TransformationMatrix(
 auto beamInterfaceElement3D::getLocalCoordinate(
     PointerCollection &pointers, IntegrationPoint &integrationPoint)
     -> Types::Vector3<prec> {
-  auto face = pointers.getGeometryData()->getFace(
+  auto face = pointers.getGeometryData()->getFaceData(
       m_faces[integrationPoint.sectionNumber]);
   IntegrationPoint faceInt;
   faceInt.xi = integrationPoint.eta;
   faceInt.eta = integrationPoint.zeta;
-  Types::Vector3<prec> coor = face->getCoordinates(pointers, faceInt);
+  Types::Vector3<prec> coor = face->getCoordinates(faceInt);
   coor -= m_projectedCoordinate;
   coor = this->getRotationR0().transpose() * coor;
   return coor;
@@ -1129,16 +1131,16 @@ auto beamInterfaceElement3D::getLocalCoordinate(
 auto beamInterfaceElement3D::getJacobian(PointerCollection &pointers,
                                          IntegrationPoint &integrationPoint)
     -> Types::MatrixXX<prec> {
-  auto face = pointers.getGeometryData()->getFace(
+  auto face = pointers.getGeometryData()->getFaceData(
       m_faces[integrationPoint.sectionNumber]);
   IntegrationPoint faceInt;
   faceInt.xi = integrationPoint.eta;
   faceInt.eta = integrationPoint.zeta;
   Types::MatrixXX<prec> jacobi(3, 3);
-  Types::Vector3<prec> normal = face->getFaceNormal(pointers);
+  Types::Vector3<prec> normal = face->getFaceNormal();
   jacobi.block(0, 0, 3, 1) = normal * m_length * prec(0.5);
-  jacobi.block(0, 1, 3, 1) = face->getTangent_G1(pointers, faceInt);
-  jacobi.block(0, 2, 3, 1) = face->getTangent_G2(pointers, faceInt);
+  jacobi.block(0, 1, 3, 1) = face->getTangent_G1(faceInt);
+  jacobi.block(0, 2, 3, 1) = face->getTangent_G2(faceInt);
 
   jacobi = getRotationR0().transpose() * jacobi;
 
@@ -1155,7 +1157,7 @@ auto beamInterfaceElement3D::getH1Shapes(PointerCollection &pointers,
                                          const Types::Matrix33<prec> &jacobi,
                                          IntegrationPoint &integrationPoint)
     -> Geometry::H1Shapes {
-  auto face = pointers.getGeometryData()->getFace(
+  auto face = pointers.getGeometryData()->getFaceData(
       m_faces[integrationPoint.sectionNumber]);
 
   indexType totshapes = m_numberOfWarpingShapes + 2;
@@ -1163,7 +1165,7 @@ auto beamInterfaceElement3D::getH1Shapes(PointerCollection &pointers,
   faceIntegrationPoint.xi = integrationPoint.eta;
   faceIntegrationPoint.eta = integrationPoint.zeta;
 
-  Types::Vector3<prec> normal = face->getFaceNormal(pointers);
+  Types::Vector3<prec> normal = face->getFaceNormal();
   indexType faceShapeNumber = 0;
   indexType beamShapeNumber = 1;
   prec beamFact = 1.0;
@@ -1174,14 +1176,12 @@ auto beamInterfaceElement3D::getH1Shapes(PointerCollection &pointers,
   }
 
   auto localShapes =
-      face->getH1Shapes(pointers, dispOrder, faceIntegrationPoint);
-  auto faceNodes = face->getH1Nodes(pointers, meshIdDisp, dispOrder);
+      face->getH1Shapes(dispOrder, faceIntegrationPoint);
+  auto faceNodes = face->getH1Nodes(meshIdDisp, dispOrder);
 
   auto shx = LobattoShapes::getShape(integrationPoint.xi, faceShapeNumber);
 
-  Geometry::H1Shapes shapes;
-  shapes.shapes.resize(totshapes);
-  shapes.shapeDeriv.resize(3, totshapes);
+  Geometry::H1Shapes shapes(totshapes,3);
   shapes.shapes.setZero();
   shapes.shapeDeriv.setZero();
 
@@ -1240,9 +1240,9 @@ auto beamInterfaceElement3D::getWarpingMatrixV1(PointerCollection &pointers,
     result(4, pos) = shapes.omega1Deriv(2, i); // tauxz
     ++pos;
   }
-  auto face = pointers.getGeometryData()->getFace(this->m_faces[0]);
-  auto V1 = face->getVertex(pointers, 0);
-  auto V2 = face->getVertex(pointers, 1);
+  auto face = pointers.getGeometryData()->getFaceData(this->m_faces[0]);
+  auto V1 = face->getVertex(0);
+  auto V2 = face->getVertex(1);
   auto coor = V2->getCoordinates() - V1->getCoordinates();
   auto dotpV = coor.dot(m_A2);
 
@@ -1323,9 +1323,9 @@ auto beamInterfaceElement3D::getWarpingMatrixV2(PointerCollection &pointers,
     result(4, pos) = shapes.omega1Deriv(2, i); // tauxz
     ++pos;
   }
-  auto face = pointers.getGeometryData()->getFace(this->m_faces[0]);
-  auto V1 = face->getVertex(pointers, 0);
-  auto V2 = face->getVertex(pointers, 1);
+  auto face = pointers.getGeometryData()->getFaceData(this->m_faces[0]);
+  auto V1 = face->getVertex(0);
+  auto V2 = face->getVertex(1);
   auto coor = V2->getCoordinates() - V1->getCoordinates();
   auto dotpV = coor.dot(m_A2);
 
@@ -1415,9 +1415,9 @@ auto beamInterfaceElement3D::getWarpingMatrixV3(PointerCollection &pointers,
     result(4, pos) = shapes.omega1Deriv(2, i); // tauxz
     ++pos;
   }
-  auto face = pointers.getGeometryData()->getFace(this->m_faces[0]);
-  auto V1 = face->getVertex(pointers, 0);
-  auto V2 = face->getVertex(pointers, 1);
+  auto face = pointers.getGeometryData()->getFaceData(this->m_faces[0]);
+  auto V1 = face->getVertex(0);
+  auto V2 = face->getVertex(1);
   auto coor = V2->getCoordinates() - V1->getCoordinates();
   auto dotpV = coor.dot(m_A2);
 
@@ -1513,9 +1513,9 @@ auto beamInterfaceElement3D::getWarpingMatrixV4(PointerCollection &pointers,
         shapes.localShapesDeriv(2, i) + shapes.localShapesDeriv(1, i);
     ++pos;
   }
-  auto face = pointers.getGeometryData()->getFace(this->m_faces[0]);
-  auto V1 = face->getVertex(pointers, 0);
-  auto V2 = face->getVertex(pointers, 1);
+  auto face = pointers.getGeometryData()->getFaceData(this->m_faces[0]);
+  auto V1 = face->getVertex(0);
+  auto V2 = face->getVertex(1);
   auto coor = V2->getCoordinates() - V1->getCoordinates();
   auto dotpV = coor.dot(m_A2);
 
@@ -1556,9 +1556,9 @@ void beamInterfaceElement3D::computeBCVerts(PointerCollection &pointers) {
   auto R = this->getRotationR0();
   std::set<indexType> vertNums;
   for (auto i : m_faces) {
-    auto face = pointers.getGeometryData()->getFace(i);
+    auto face = pointers.getGeometryData()->getFaceData(i);
     std::vector<indexType> lvertnums;
-    face->getVerts(lvertnums);
+    lvertnums = face->getVertexNumbers();
     for (auto nn : lvertnums) {
       vertNums.insert(nn);
     }
@@ -1584,7 +1584,7 @@ void beamInterfaceElement3D::computeBCVerts(PointerCollection &pointers) {
   prec zmax = ymax;
 
   for (auto vnum : vertNums) {
-    auto &vert = pointers.getGeometryData()->getVertex(vnum);
+    auto &vert = pointers.getGeometryData()->getVertexData(vnum);
     Types::Vector3<prec> coor =
         R.transpose() * (vert.getCoordinates() - m_projectedCoordinate);
     if (coor(1) > ymax)
@@ -1614,14 +1614,14 @@ void beamInterfaceElement3D::computeBCVerts(PointerCollection &pointers) {
     indexType vv = *vertNums.begin();
     v1.num = vv;
     Types::Vector3<prec> tt =
-        pointers.getGeometryData()->getVertex(vv).getCoordinates();
+        pointers.getGeometryData()->getVertexData(vv).getCoordinates();
     v1.coor = R.transpose() * (tt - m_projectedCoordinate);
   }
   v2 = v1;
   v3 = v1;
 
   for (auto vnum : vertNums) {
-    auto &vert = pointers.getGeometryData()->getVertex(vnum);
+    auto &vert = pointers.getGeometryData()->getVertexData(vnum);
     vnumCoor currV;
     currV.num = vnum;
     currV.coor =
@@ -1643,4 +1643,11 @@ void beamInterfaceElement3D::computeBCVerts(PointerCollection &pointers) {
   m_vertX2 = v2.num;
   m_vertX3 = v3.num;
 }
+
+auto beamInterfaceElement3D::getElementType() -> Elementtypes {
+  return Elementtypes::beamInterfaceElement3D;
+}
+
+void beamInterfaceElement3D::set_pointers(PointerCollection &pointers) {}
+
 } // namespace HierAMuS::FiniteElement

@@ -4,6 +4,8 @@
 
 
 
+#include "geometry/GeometryData.h"
+
 
 #include "plot/vtkplotClassBase.h"
 #include <plot/vtkplotClass.h>
@@ -12,15 +14,16 @@
 #include <types/MatrixTypes.h>
 
 #include <elementFormulations/GenericElementFormulation.h>
-#include <equations/NodeSet.h>
 #include <finiteElements/LinearPrism.h>
-#include <geometry/Base.h>
-#include <geometry/Edges.h>
-#include <geometry/GeometryData.h>
-#include <geometry/Vertex.h>
-#include <geometry/Faces.h>
-#include <geometry/Volumes.h>
+#include <geometry/GeometryBaseData.h>
+#include <geometry/Edges/EdgesData.h>
+#include <geometry/VertexData.h>
+#include <geometry/Faces/FacesData.h>
+#include <geometry/Volumes/VolumesData.h>
 #include <solver/GenericSolutionState.h>
+
+#include "geometry/Volumes/VolumesRuntime.h"
+#include "geometry/Volumes/VolumesH1Interface.h"
 
 #include <pointercollection/pointercollection.h>
 
@@ -36,33 +39,34 @@ namespace HierAMuS::FiniteElement {
 
 LinearPrism::~LinearPrism() = default;
 
-auto LinearPrism::getVertexIds(PointerCollection& pointers) -> std::vector<indexType> {
-
-  std::vector<indexType> u;
-  Geometry::Base *geoElem;
-  geoElem = pointers.getGeometryData()->getVolume(this->vol);
-  geoElem->getVerts(u);
-  return u;
+void LinearPrism::set_pointers(PointerCollection &pointers) {
+  m_volume_runtime =
+      pointers.getGeometryData()->getVolumeRuntime(m_volume);
 }
 
-void LinearPrism::setVolume(indexType volIn) { this->vol = volIn; }
+auto LinearPrism::getVertexIds(PointerCollection& pointers) -> std::vector<indexType> {
+
+  auto geoElem = pointers.getGeometryData()->getVolumeData(this->m_volume);
+  return geoElem->getVertexNumbers();
+}
+
+void LinearPrism::setVolume(indexType volIn) { this->m_volume = volIn; }
 
 auto LinearPrism::getVertex(ptrCol &pointers, indexType num)
-    -> Geometry::Vertex & {
+    -> Geometry::VertexData & {
 
   std::vector<indexType> vertIds;
   vertIds = this->getVertexIds(pointers);
 
-  return pointers.getGeometryData()->getVertex(vertIds[num]);
+  return pointers.getGeometryData()->getVertexData(vertIds[num]);
 }
 
 auto LinearPrism::getEdge(ptrCol &pointers, indexType num)
-    -> Geometry::Edges & {
-  Geometry::Base *temp;
-  temp = pointers.getGeometryData()->getVolume(this->vol);
+    -> Geometry::EdgesData & {
+  auto temp = pointers.getGeometryData()->getVolumeData(this->m_volume);
   std::vector<indexType> EdgeNums;
-  temp->getEdges(EdgeNums);
-  return pointers.getGeometryData()->getEdge(EdgeNums[num]);
+  temp->getEdgeNumbers(EdgeNums);
+  return pointers.getGeometryData()->getEdgeData(EdgeNums[num]);
 }
 
 
@@ -71,32 +75,32 @@ void LinearPrism::getH1Shapes(ptrCol &pointers, indexType order,
                               Types::VectorX<prec> &shape,
                               Types::Matrix3X<prec> &dshape, prec xi,
                               prec eta, prec zeta) {
-  Geometry::Volumes *tempVol;
-  tempVol = pointers.getGeometryData()->getVolume(this->vol);
-  tempVol->getH1Shapes(pointers, order, shape, dshape, xi, eta, zeta);
+  m_volume_runtime->getH1Volume()->getH1Shapes(order, shape, dshape,
+                                               xi, eta, zeta);
   dshape = jacobi.inverse().transpose() * dshape;
 }
 
 void LinearPrism::getJacobian(ptrCol &pointers, Types::Matrix33<prec> &jacobi,
                               prec xsi, prec eta,
                               prec zeta) {
-  Geometry::Volumes *tempVol;
-  tempVol = pointers.getGeometryData()->getVolume(this->vol);
-  tempVol->getJacobian(pointers, jacobi, xsi, eta, zeta);
+  IntegrationPoint a;
+  a.xi = xsi;
+  a.eta = eta;
+  a.zeta = zeta;
+  jacobi = m_volume_runtime->getJacobian(a);
 }
 
 void LinearPrism::setH1Shapes(ptrCol &pointers, indexType meshid,
                               indexType order) {
-  Geometry::Volumes *tempVol;
-  tempVol = pointers.getGeometryData()->getVolume(this->vol);
-  tempVol->setH1Shapes(pointers, meshid, order, NodeTypes::displacement);
+  Geometry::VolumesData *tempVol;
+  tempVol = pointers.getGeometryData()->getVolumeData(this->m_volume);
+  tempVol->setH1Shapes(meshid, order, NodeTypes::displacement);
 }
 
 void LinearPrism::getH1Dofs(ptrCol &pointers,
                             std::vector<DegreeOfFreedom *> &Dofs,
                             indexType meshID, indexType order) {
-  Geometry::Volumes *temp = pointers.getGeometryData()->getVolume(this->vol);
-  temp->getH1Dofs(pointers, Dofs, meshID, order);
+  m_volume_runtime->getH1Volume()->getH1Dofs(Dofs, meshID, order);
 }
 
 void LinearPrism::getGaussPoints(indexType number,
@@ -108,101 +112,6 @@ void LinearPrism::getGaussPoints(indexType number,
 }
 
 
-
-void LinearPrism::toParaviewAdapter(PointerCollection &ptrCol,
-                                    vtkPlotInterface &catalyst,
-                                    const ParaviewSwitch &ToDo) {
-#ifdef USE_VTK
-
-  switch (ToDo) {
-  case ParaviewSwitch::Mesh: {
-    int matNum = static_cast<int>(this->getMaterial()->getNumber());
-    Types::Vector3<prec> coors(3);
-    std::vector<double> coorsA(3);
-    Geometry::Base *Vert;
-    std::vector<indexType> cell(6);
-    for (indexType i = 0; i < 6; ++i) {
-      Vert = &this->getVertex(ptrCol, i);
-      coors = Vert->getCoordinates();
-      for (auto j = 0; j < 3; ++j) {
-        coorsA[j] = static_cast<double>(coors(j));
-      }
-      catalyst.addPoint(0, matNum, Vert->getId(), coorsA[0], coorsA[1],
-                        coorsA[2]);
-      cell[i] = Vert->getId();
-    }
-    int celltype = VTK_WEDGE;
-    indexType dummy = 1;
-    indexType nn = 6;
-    catalyst.addCell(0, matNum, this->id, dummy, cell, nn, celltype);
-    break;
-  }
-  case ParaviewSwitch::Solution: {
-    indexType matNum = (this->getMaterial()->getNumber());
-    Geometry::Base *Vert;
-    NodeSet *tempSet;
-    std::vector<DegreeOfFreedom *> Dofs;
-    Types::VectorX<prec> solution;
-    std::vector<prec> sol(3);
-    for (indexType i = 0; i < 6; ++i) {
-      Vert = &this->getVertex(ptrCol, i);
-      std::vector<NodeSet *> sets;
-      Vert->getSets(ptrCol, sets);
-      indexType vertId = (Vert->getId());
-      for (auto j = sets.begin(); j != sets.end(); ++j) {
-        tempSet = *j;
-        indexType id = tempSet->getMeshId();
-        indexType nnodes = tempSet->getNumberOfNodes();
-        for (auto k = 0; k < nnodes; ++k) {
-          std::stringstream ArrName;
-          ArrName << "SolutionM" << id << "N" << k;
-          Dofs = tempSet->getDegreesOfFreedom(ptrCol);
-          this->getSolution(ptrCol, Dofs, solution);
-          for (auto i = 0; i < 3; ++i) {
-            sol[i] = static_cast<double>(solution(i));
-          }
-          indexType comp = 3;
-          indexType main = 0;
-          catalyst.setPointData(main, matNum, vertId, sol, comp, ArrName.str());
-        }
-      }
-    }
-    break;
-  }
-  case ParaviewSwitch::Weights: {
-  } break;
-  case ParaviewSwitch::ProjectedValues: {
-  } break;
-  case ParaviewSwitch::Eigenvector:
-    break;
-  }
-
-  // select(ToDo){
-  //   case ParaviewSwitch::Mesh:
-  //   int matNum = static_cast<int>(this->getMaterial()->getNumber());
-  //   std::vector<prec> coors;
-  //   GenericGeometryElement *Vert;
-  //   std::vector<int> cell(8);
-  //   for(indexType i=0;i<8;++i){
-  //     Vert = this->getVertex(ptrCol,i);
-  //     coors = Vert->getCoordinates();
-  //     int id = static_cast<int>(Vert->getId());
-  //     catalyst.addPoint(0,matNum,id,coors[0],coors[1],coors[2]);
-  //     cell[i] = static_cast<int>(id);
-  //   }
-  //   int celltype = VTK_HEXAHEDRON;
-  //   int dummy = 1;
-  //   int nn = 8;
-  //   int idd = this->id;
-  //   catalyst.addCell(0,matNum,idd,dummy,&cell[0],&nn,&celltype);
-  //   break;
-
-  //   case ParaviewSwitch::Solution:
-  //   break;
-  // }
-
-#endif
-}
 
 void LinearPrism::projectOnVertsParaview(PointerCollection &ptrCol,
                                          vtkPlotInterface &catalyst,
@@ -236,7 +145,7 @@ void LinearPrism::setH1BeamShapes(LinearPrism::ptrCol &pointers,
 
   auto &edge = this->getBeamEdge(pointers);
 
-  edge.setH1Shapes(pointers, meshid, order, NodeTypes::displacement);
+  edge.setH1Shapes(meshid, order, NodeTypes::displacement);
 }
 
 void LinearPrism::getH1BeamDofs(LinearPrism::ptrCol &pointers,
@@ -244,7 +153,7 @@ void LinearPrism::getH1BeamDofs(LinearPrism::ptrCol &pointers,
                                 indexType meshID, indexType order) {
   auto &edge = this->getBeamEdge(pointers);
 
-  edge.getH1Dofs(pointers, Dofs, meshID, order);
+  edge.getH1Dofs(Dofs, meshID, order);
 }
 
 void LinearPrism::getH1BeamShapes(LinearPrism::ptrCol &pointers,
@@ -255,41 +164,41 @@ void LinearPrism::getH1BeamShapes(LinearPrism::ptrCol &pointers,
 
   auto &edge = this->getBeamEdge(pointers);
 
-  edge.getH1Shapes(pointers, order, shape, shapeDerivatives, xi);
+  edge.getH1Shapes(order, shape, shapeDerivatives, xi);
   shapeDerivatives /= jacobian;
 }
 
 auto LinearPrism::getBeamEdge(LinearPrism::ptrCol &pointers)
-    -> Geometry::Edges & {
-  Geometry::Volumes *geoElem = pointers.getGeometryData()->getVolume(this->vol);
+    -> Geometry::EdgesData & {
+  Geometry::VolumesData *geoElem = pointers.getGeometryData()->getVolumeData(this->m_volume);
 
   std::vector<indexType> edges;
-  geoElem->getEdges(edges);
+  geoElem->getEdgeNumbers(edges);
 
-  auto &edge = pointers.getGeometryData()->getEdge(edges[3]);
+  auto &edge = pointers.getGeometryData()->getEdgeData(edges[3]);
   return edge;
 }
 
 auto LinearPrism::getEndTriad(LinearPrism::ptrCol &pointers)
     -> Types::Matrix33<prec> {
 
-  Geometry::Volumes *prism = pointers.getGeometryData()->getVolume(this->vol);
+  Geometry::VolumesData *prism = pointers.getGeometryData()->getVolumeData(this->m_volume);
 
   std::vector<indexType> faceNums;
-  prism->getFaces(faceNums);
+  prism->getFaceNumbers(faceNums);
 
-  Geometry::Faces *triad;
-  triad = pointers.getGeometryData()->getFace(faceNums.back());
+  Geometry::FacesData *triad;
+  triad = pointers.getGeometryData()->getFaceData(faceNums.back());
 
   faceNums.clear();
 
-  triad->getVerts(faceNums);
+  faceNums = triad->getVertexNumbers();
 
 
 
-  auto &v1 = pointers.getGeometryData()->getVertex(faceNums[0]);
-  auto &v2 = pointers.getGeometryData()->getVertex(faceNums[1]);
-  auto &v3 = pointers.getGeometryData()->getVertex(faceNums[2]);
+  auto &v1 = pointers.getGeometryData()->getVertexData(faceNums[0]);
+  auto &v2 = pointers.getGeometryData()->getVertexData(faceNums[1]);
+  auto &v3 = pointers.getGeometryData()->getVertexData(faceNums[2]);
 
   Types::Vector3<prec> A2 = v2.getCoordinates() - v1.getCoordinates();
   Types::Vector3<prec> A3 = v3.getCoordinates() - v1.getCoordinates();
@@ -308,22 +217,22 @@ auto LinearPrism::getEndTriad(LinearPrism::ptrCol &pointers)
 
 auto LinearPrism::getStartTriad(LinearPrism::ptrCol &pointers)
     -> Types::Matrix33<prec> {
-  Geometry::Volumes *prism = pointers.getGeometryData()->getVolume(this->vol);
+  Geometry::VolumesData *prism = pointers.getGeometryData()->getVolumeData(this->m_volume);
 
   std::vector<indexType> faceNums;
-  prism->getFaces(faceNums);
+  prism->getFaceNumbers(faceNums);
 
-  Geometry::Faces *triad;
-  triad = pointers.getGeometryData()->getFace(faceNums.front());
+  Geometry::FacesData *triad;
+  triad = pointers.getGeometryData()->getFaceData(faceNums.front());
 
   faceNums.clear();
 
-  triad->getVerts(faceNums);
+  faceNums = triad->getVertexNumbers();
 
 
-  auto &v1 = pointers.getGeometryData()->getVertex(faceNums[0]);
-  auto &v2 = pointers.getGeometryData()->getVertex(faceNums[1]);
-  auto &v3 = pointers.getGeometryData()->getVertex(faceNums[2]);
+  auto &v1 = pointers.getGeometryData()->getVertexData(faceNums[0]);
+  auto &v2 = pointers.getGeometryData()->getVertexData(faceNums[1]);
+  auto &v3 = pointers.getGeometryData()->getVertexData(faceNums[2]);
 
   Types::Vector3<prec> A2 = v2.getCoordinates() - v1.getCoordinates();
   Types::Vector3<prec> A3 = v3.getCoordinates() - v1.getCoordinates();
@@ -347,10 +256,14 @@ auto LinearPrism::getBeamJacobian(LinearPrism::ptrCol &pointers, prec xi)
 
   auto &edge = this->getBeamEdge(pointers);
 
-  jac = edge.getJacobian(pointers, xi);
+  jac = edge.getJacobian(xi);
 
   return jac;
 };
+
+auto LinearPrism::getType() -> Elementtypes {
+  return Elementtypes::LinearPrism;
+}
 
 } // namespace HierAMuS::FiniteElement
 

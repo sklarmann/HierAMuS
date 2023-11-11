@@ -24,6 +24,7 @@ set(HEADERS ${HEADERS}
 		${CMAKE_CURRENT_SOURCE_DIR}/Volume.h
 		${CMAKE_CURRENT_SOURCE_DIR}/NormTypes.h
 		${CMAKE_CURRENT_SOURCE_DIR}/GenericFiniteElement.h
+		${CMAKE_CURRENT_SOURCE_DIR}/GenericFiniteElementInterface.h
 		${CMAKE_CURRENT_SOURCE_DIR}/beamInterfaceElement2D.h
 		${CMAKE_CURRENT_SOURCE_DIR}/beamInterfaceElement3D.h
 		${CMAKE_CURRENT_SOURCE_DIR}/LinearPrism.h

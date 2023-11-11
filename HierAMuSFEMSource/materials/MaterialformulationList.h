@@ -4,15 +4,16 @@
 
 #pragma once
 
-#include <forwarddeclaration.h>
+#include "datatypes.h"
 
 #include <vector>
-#include <materials/GenericMaterialFormulation.h>
-#include <control/ParameterList.h>
 #include <memory>
 
-namespace HierAMuS::Materials {
-
+namespace HierAMuS {
+class PointerCollection;
+class ParameterList;
+namespace Materials {
+class GenericMaterialFormulation;
 class MaterialFormulationList {
 public:
   MaterialFormulationList();
@@ -20,11 +21,13 @@ public:
   void addMaterial(PointerCollection &pointers, indexType number,
                    indexType materialFormulation,
                    ParameterList &materialparameters);
-  void addMaterial(indexType number, std::shared_ptr<GenericMaterialFormulation> material);
+  void addMaterial(indexType number,
+                   std::shared_ptr<GenericMaterialFormulation> material);
   std::shared_ptr<GenericMaterialFormulation> getMaterial(indexType number);
   indexType getLastMaterialNumber() { return this->Materials.size() - 1; };
 
 private:
   std::vector<std::shared_ptr<GenericMaterialFormulation>> Materials;
 };
+} // namespace Materials
 } // namespace HierAMuS

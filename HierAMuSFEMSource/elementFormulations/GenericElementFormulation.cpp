@@ -7,6 +7,7 @@
 #include <elementFormulations/GenericElementFormulation.h>
 #include <pointercollection/pointercollection.h>
 #include <control/HandlingStructs.h>
+#include "control/ParameterList.h"
 
 #include <Eigen/Dense>
 
@@ -24,17 +25,9 @@ GenericElementFormulation::GenericElementFormulation(
 GenericElementFormulation::~GenericElementFormulation() {
 }
 
-void GenericElementFormulation::setDegreesOfFreedom(
-  PointerCollection& pointers, FiniteElement::GenericFiniteElement *elem) {}
 
-void GenericElementFormulation::AdditionalOperations(
-  PointerCollection& pointers, FiniteElement::GenericFiniteElement *elem)
-{
-  
-}
 
-void GenericElementFormulation::readData(PointerCollection &pointers,
-                                         ParameterList &list) {}
+
 
 auto GenericElementFormulation::getHistoryDataStructure()
     -> const HistoryDataStructure & {
@@ -48,7 +41,7 @@ void GenericElementFormulation::messageUnprocessed(PointerCollection &pointers,
                                                    std::string elementName) {
 
   if(!paraMap.empty()){
-    auto Logger = pointers.getSPDLogger();
+    auto &Logger = pointers.getSPDLogger();
     Logger.warn("nUnprocessed input parameters in elementformulation {}", elementName);
 
     for(auto & it : paraMap){

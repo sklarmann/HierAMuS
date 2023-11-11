@@ -6,24 +6,24 @@
 
 #pragma once
 
-#include <forwarddeclaration.h>
-
-#include <elementFormulations/GenericElementFormulation.h>
-//#include <Eigen/Dense>
+#include "elementFormulations/GenericElementFormulationInterface.h"
 
 namespace HierAMuS::Elementformulations {
 
-class EL202_Piezo2D : public GenericElementFormulation {
+class EL202_Piezo2D : public GenericElementFormulationInterface<FiniteElement::Face> {
 public:
   explicit EL202_Piezo2D(PointerCollection *ptrCol);
   ~EL202_Piezo2D() override;
   void readData(PointerCollection &pointers, ParameterList &list) override;
-  void setDegreesOfFreedom(PointerCollection& pointers, FiniteElement::GenericFiniteElement *elem) override;
+  void setDegreesOfFreedom(PointerCollection &pointers,
+                           FiniteElement::Face &elem) override;
+  void AdditionalOperations(PointerCollection &pointers,
+                            FiniteElement::Face &elem) override;
   auto getDofs(PointerCollection& pointers, FiniteElement::GenericFiniteElement *elem)
   -> std::vector<DegreeOfFreedom *> override;
   void setTangentResidual(
     PointerCollection& pointers,
-    FiniteElement::GenericFiniteElement *elem,
+    FiniteElement::Face &elem,
     Eigen::Matrix<prec, Eigen::Dynamic, Eigen::Dynamic> &stiffness,
     Eigen::Matrix<prec, Eigen::Dynamic, 1> &residual, std::vector<DegreeOfFreedom *> &Dofs) override;
 
@@ -33,7 +33,7 @@ public:
 
   //Plot
   void toParaviewAdaper(PointerCollection &pointers,
-                        FiniteElement::GenericFiniteElement *elem,
+                        FiniteElement::Face &elem,
                         vtkPlotInterface &paraviewAdapter,
                         ParaviewSwitch control) override;
 

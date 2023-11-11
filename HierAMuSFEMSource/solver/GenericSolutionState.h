@@ -4,7 +4,6 @@
 
 #pragma once
 
-#include <forwarddeclaration.h>
 
 #include <solver/SolutionTypes.h>
 #include <solver/SolverTypes.h>
@@ -18,14 +17,32 @@
 
 #include <Eigen/Dense>
 
-#include <Base/FEMBase.h>
 #include <types/MatrixTypes.h>
 
 namespace HierAMuS {
+
+class GenericNodes;
+class GenericSolver;
 enum class HistoryTypes { Constant, TimeUpdate };
 class ParameterList;
+class PropfunctionHandler;
 
-class GenericSolutionState : public FEMBase {
+class ElementDataFields {
+
+  public:
+  void request_field(indexType elementId, indexType fieldId, indexType rows,
+                     indexType cols);
+  auto get_field(indexType elementId, indexType fieldId)
+      -> Types::MatrixXX<prec> &;
+  void set_field(indexType elementId, indexType fieldId,
+                 Types::MatrixXX<prec> &data);
+
+  private:
+  std::map<indexType, std::vector<Types::MatrixXX<prec>>> m_data;
+};
+
+
+class GenericSolutionState {
 public:
   GenericSolutionState(ParameterList &parameter);
   GenericSolutionState(const GenericSolutionState &other);
@@ -37,6 +54,13 @@ public:
   virtual auto getType() -> SolutionTypes {
     return SolutionTypes::GenericSolutionState;
   }
+
+  void request_element_data_field(indexType elementId, indexType fieldId,
+                                  indexType rows, indexType cols);
+  auto get_element_data_field(indexType elementId, indexType fieldId)
+      -> Types::MatrixXX<prec> &;
+  void set_element_data_field(indexType elementId, indexType fieldId,
+                 Types::MatrixXX<prec> &data);
 
   virtual void setValues(std::map<std::string, prec> &values){};
 
@@ -111,7 +135,7 @@ public:
   virtual void computeConditionNumber(PointerCollection &pointers){};
 
   prec getEigenValue(indexType &number) {
-    if (number < this->eigenValues.size()) {
+    if (number < static_cast<indexType>(this->eigenValues.size())) {
       return this->eigenValues[number];
     } else {
       return (prec)0;
@@ -199,6 +223,7 @@ protected:
 private:
   HistoryDataManager m_HistoryData;
   bool m_hasRVEs;
+  ElementDataFields m_ElementData;
 };
 
 } /* namespace HierAMuS */

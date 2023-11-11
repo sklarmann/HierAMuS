@@ -7,7 +7,7 @@
 //
 
 #include "VolumesWrapper.h"
-#include "geometry/Volumes.h"
+#include "geometry/Volumes/VolumesData.h"
 #include "geometry/GeometryData.h"
 #include "pybind11/stl.h"
 
@@ -16,9 +16,9 @@ namespace HierAMuS{
 namespace Geometry {
 
 void VolumesWrapper::registerFunctions() {
-  this->temp.def("setVerts",&Volumes::setVerts)
-      .def("setEdges",&Volumes::setEdges)
-      .def("setFaces",&Volumes::setFaces);
+  this->temp.def("setVerts",&VolumesData::setVerts)
+      .def("setEdges",&VolumesData::setEdges)
+      .def("setFaces",&VolumesData::setFaces);
 }
 
 }

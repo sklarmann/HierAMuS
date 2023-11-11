@@ -59,7 +59,7 @@ class meshCommands:
         
         elemlist.setDegreesOfFreedom(self.program.ptr)
         end = timer()
-        self.program.ptr.getEquationHandler().print(self.program.ptr)
+        #self.program.ptr.getEquationHandler().print(self.program.ptr)
         self.program.basicOutput(["\n   Distributing degrees of freedom took: ", end-start, " seconds"])
         
 

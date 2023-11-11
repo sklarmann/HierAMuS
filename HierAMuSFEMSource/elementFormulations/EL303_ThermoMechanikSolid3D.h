@@ -5,34 +5,31 @@
 
 #pragma once
 
-#include "MatrixTypes.h"
-#include "geometry/Base.h"
-#include "geometry/GeometryTypes.h"
-#include <forwarddeclaration.h>
-
-#include <elementFormulations/GenericElementFormulation.h>
-#include <Eigen/Dense>
+#include "elementFormulations/GenericElementFormulationInterface.h"
 
 namespace HierAMuS {
+namespace Geometry {
+struct H1Shapes;
+}
 namespace Elementformulations {
 
-class EL303_ThermoMechanikSolid3D : public GenericElementFormulation {
+class EL303_ThermoMechanikSolid3D : public GenericElementFormulationInterface<FiniteElement::Volume> {
 public:
   EL303_ThermoMechanikSolid3D(PointerCollection *ptrCol);
   ~EL303_ThermoMechanikSolid3D() override;
   void readData(PointerCollection &pointers, ParameterList &list) override;
-  void setDegreesOfFreedom(PointerCollection& pointers, FiniteElement::GenericFiniteElement *elem) override;
-  void AdditionalOperations(PointerCollection& pointers, FiniteElement::GenericFiniteElement *elem) override;
+  void setDegreesOfFreedom(PointerCollection& pointers, FiniteElement::Volume &elem) override;
+  void AdditionalOperations(PointerCollection& pointers, FiniteElement::Volume &elem) override;
   auto getDofs(PointerCollection& pointers, FiniteElement::GenericFiniteElement *elem) -> std::vector<DegreeOfFreedom*> override;
   void setTangentResidual(
     PointerCollection& pointers,
-    FiniteElement::GenericFiniteElement *elem,
+    FiniteElement::Volume &elem,
     Eigen::Matrix<prec, Eigen::Dynamic, Eigen::Dynamic> &stiffness,
     Eigen::Matrix<prec, Eigen::Dynamic, 1> &residual, std::vector<DegreeOfFreedom *> &Dofs) override;
 
   // Paraview
   void toParaviewAdaper(PointerCollection &pointers,
-                                FiniteElement::GenericFiniteElement *elem,
+                                FiniteElement::Volume &elem,
                                 vtkPlotInterface &paraviewAdapter,
                                 ParaviewSwitch control) override;
   auto getHistoryDataStructure() -> const HistoryDataStructure & override;
@@ -42,12 +39,12 @@ public:
 private:
   void setTangentResidualLinear(
     PointerCollection& pointers,
-    FiniteElement::GenericFiniteElement *elem,
+    FiniteElement::Volume &elem,
     Eigen::Matrix<prec, Eigen::Dynamic, Eigen::Dynamic> &stiffness,
     Eigen::Matrix<prec, Eigen::Dynamic, 1> &residual, std::vector<DegreeOfFreedom *> &Dofs);
   void setTangentResidualNonLinear(
     PointerCollection& pointers,
-    FiniteElement::GenericFiniteElement *elem,
+    FiniteElement::Volume &elem,
     Eigen::Matrix<prec, Eigen::Dynamic, Eigen::Dynamic> &stiffness,
     Eigen::Matrix<prec, Eigen::Dynamic, 1> &residual, std::vector<DegreeOfFreedom *> &Dofs);
 

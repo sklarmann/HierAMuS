@@ -12,14 +12,14 @@
 
 namespace py = pybind11;
 
-#include "geometry/Volumes.h"
+#include "geometry/Volumes/VolumesData.h"
 
 
 namespace HierAMuS {
 namespace Geometry {
-class PyVolumes : public Volumes {
+class PyVolumes : public VolumesData {
 public:
-  using Volumes::Volumes;
+  using VolumesData::VolumesData;
 
   // void renew() {
   //  PYBIND11_OVERRIDE(void, HierAMuS::PointerCollection, renew);
@@ -33,7 +33,8 @@ public:
   void registerFunctions();
 
 private:
-  typedef py::class_<Volumes, PyVolumes, Base, std::shared_ptr<Volumes>>
+  typedef py::class_<VolumesData, PyVolumes, GeometryBaseData,
+                     std::shared_ptr<VolumesData>>
       pw;
   pw temp;
 };

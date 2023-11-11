@@ -10,16 +10,11 @@
 
 #include <control/HandlingStructs.h>
 #include <control/OutputHandler.h>
+#include "control/ParameterList.h"
 
-#include <equations/DegreeOfFreedom.h>
-#include <equations/GenericNodes.h>
-#include <equations/NodeSet.h>
-#include <equations/Nodetypes.h>
 
-#include <finiteElements/GenericFiniteElement.h>
+#include <finiteElements/Volume.h>
 
-#include <geometry/Base.h>
-#include <geometry/Volumes.h>
 
 
 #include <materials/GenericMaterialFormulation.h>
@@ -37,7 +32,7 @@ namespace HierAMuS {
 namespace Elementformulations {
 
 EL303_ThermoMechanikSolid3D::EL303_ThermoMechanikSolid3D(PointerCollection *ptrCol)
-    : GenericElementFormulation(ptrCol) {}
+    : GenericElementFormulationInterface(ptrCol) {}
 
 EL303_ThermoMechanikSolid3D::~EL303_ThermoMechanikSolid3D() {}
 
@@ -58,7 +53,7 @@ void EL303_ThermoMechanikSolid3D::readData(PointerCollection &pointers,
   this->mode = list.getIndexVal("mode");
   
 
-  auto Log = pointers.getSPDLogger();
+  auto &Log = pointers.getSPDLogger();
 
   Log.info("\n{:-<100}\n"
                 "*   Element 303, specified Options\n"
@@ -90,17 +85,18 @@ void EL303_ThermoMechanikSolid3D::readData(PointerCollection &pointers,
 }
 
 void EL303_ThermoMechanikSolid3D::setDegreesOfFreedom(
-  PointerCollection& pointers, FiniteElement::GenericFiniteElement *elem) {
+    PointerCollection &pointers, FiniteElement::Volume &elem) {
 
-  elem->setH1Shapes(pointers, this->meshIdDisp, this->intOrderDisp);
-  elem->setH1Shapes(pointers, this->meshidTemp, this->intOrderDisp);
+  elem.setH1Shapes(pointers, this->meshIdDisp, this->intOrderDisp);
+  elem.setH1Shapes(pointers, this->meshidTemp, this->intOrderDisp);
 }
 
 void EL303_ThermoMechanikSolid3D::AdditionalOperations(
-  PointerCollection& pointers, FiniteElement::GenericFiniteElement *elem) {
-  auto vol = elem->getVolume(pointers, 0);
-  vol->setAllNodeBoundaryConditionMeshId(pointers, this->meshidTemp, 1);
-  vol->setAllNodeBoundaryConditionMeshId(pointers, this->meshidTemp, 2);
+  PointerCollection& pointers, FiniteElement::Volume &elem) {
+  auto vol = elem.getVolume(pointers, 0);
+  vol->setAllNodeBoundaryConditionMeshId(this->meshidTemp, 1);
+  vol->setAllNodeBoundaryConditionMeshId(this->meshidTemp, 2);
+
 }
 
 auto EL303_ThermoMechanikSolid3D::getDofs(PointerCollection& pointers, FiniteElement::GenericFiniteElement *elem) -> std::vector<DegreeOfFreedom*>{
@@ -113,7 +109,7 @@ auto EL303_ThermoMechanikSolid3D::getDofs(PointerCollection& pointers, FiniteEle
 }
 
 void EL303_ThermoMechanikSolid3D::setTangentResidual(
-  PointerCollection& pointers, FiniteElement::GenericFiniteElement *elem,
+  PointerCollection& pointers, FiniteElement::Volume &elem,
   Types::MatrixXX<prec> &stiffness, Types::VectorX<prec> &residual, std::vector<DegreeOfFreedom *> &Dofs) {
 
   switch (this->mode) {
@@ -129,7 +125,7 @@ void EL303_ThermoMechanikSolid3D::setTangentResidual(
 
 void EL303_ThermoMechanikSolid3D::setTangentResidualLinear(
   PointerCollection& pointers,
-  FiniteElement::GenericFiniteElement *elem,
+  FiniteElement::Volume &elem,
   Eigen::Matrix<prec, Eigen::Dynamic, Eigen::Dynamic> &stiffness,
   Eigen::Matrix<prec, Eigen::Dynamic, 1> &residual, std::vector<DegreeOfFreedom *> &Dofs) {
 
@@ -139,7 +135,7 @@ void EL303_ThermoMechanikSolid3D::setTangentResidualLinear(
 
 
   Dofs.clear();
-  Dofs = this->getDofs(pointers, elem);
+  Dofs = this->getDofs(pointers, &elem);
 
   indexType numDofs = static_cast<indexType>(Dofs.size());
   indexType numDispDofs = numDofs / 2;
@@ -155,20 +151,20 @@ void EL303_ThermoMechanikSolid3D::setTangentResidualLinear(
   residual.resize(numDofs);
   residual.setZero();
 
-  elem->getSolution(pointers, Dofs, solution);
+  elem.getSolution(pointers, Dofs, solution);
 
 
-  auto GP = elem->getIntegrationPoints(pointers);
+  auto GP = elem.getIntegrationPoints(pointers);
   GP.setOrder(this->intOrderDisp * 2);
 
-  auto Hist = elem->getHistoryDataIterator(pointers);
+  auto Hist = elem.getHistoryDataIterator(pointers);
 
   Materials::MaterialTransferData materialData;
   materialData.historyData = &Hist;
   //indexType cc = 0;
   for (auto i : GP) {
-    auto jaco = elem->getJacobian(pointers, i);
-    auto shapes = elem->getH1Shapes(pointers, this->intOrderDisp, jaco, i);
+    auto jaco = elem.getJacobian(pointers, i);
+    auto shapes = elem.getH1Shapes(pointers, this->intOrderDisp, jaco, i);
 
     auto Bmat = this->getLinearBMatrix(shapes);
     auto TrMat = this->getLinearBMatrixTrace(shapes);
@@ -213,7 +209,7 @@ void EL303_ThermoMechanikSolid3D::setTangentResidualLinear(
   residual += stiffness * solution;
 
   //std::cout << stiffness.eigenvalues() << std::endl;
-  if (elem->getId()==-1) {
+  if (elem.getId()==-1) {
     std::cout << stiffness.block(0, 0, numDispDofs, numDispDofs) << "\n"
               << std::endl;
     std::cout << stiffness.block(numDispDofs, 0, numDispDofs, numDispDofs)
@@ -227,7 +223,7 @@ void EL303_ThermoMechanikSolid3D::setTangentResidualLinear(
 
 void EL303_ThermoMechanikSolid3D::setTangentResidualNonLinear(
   PointerCollection& pointers,
-  FiniteElement::GenericFiniteElement *elem,
+  FiniteElement::Volume &elem,
   Eigen::Matrix<prec, Eigen::Dynamic, Eigen::Dynamic> &stiffness,
   Eigen::Matrix<prec, Eigen::Dynamic, 1> &residual, std::vector<DegreeOfFreedom *> &Dofs) {
 
@@ -237,7 +233,7 @@ void EL303_ThermoMechanikSolid3D::setTangentResidualNonLinear(
 
 
   Dofs.clear();
-  Dofs = this->getDofs(pointers, elem);
+  Dofs = this->getDofs(pointers, &elem);
 
   indexType numDofs = static_cast<indexType>(Dofs.size());
   indexType numDispDofs = numDofs / 2;
@@ -253,20 +249,20 @@ void EL303_ThermoMechanikSolid3D::setTangentResidualNonLinear(
   residual.resize(numDofs);
   residual.setZero();
 
-  elem->getSolution(pointers, Dofs, solution);
+  elem.getSolution(pointers, Dofs, solution);
 
 
-  auto GP = elem->getIntegrationPoints(pointers);
+  auto GP = elem.getIntegrationPoints(pointers);
   GP.setOrder(this->intOrderDisp * 2);
 
-  auto Hist = elem->getHistoryDataIterator(pointers);
+  auto Hist = elem.getHistoryDataIterator(pointers);
 
   Materials::MaterialTransferData materialData;
   materialData.historyData = &Hist;
   //indexType cc = 0;
   for (auto i : GP) {
-    auto jaco = elem->getJacobian(pointers, i);
-    auto shapes = elem->getH1Shapes(pointers, this->intOrderDisp, jaco, i);
+    auto jaco = elem.getJacobian(pointers, i);
+    auto shapes = elem.getH1Shapes(pointers, this->intOrderDisp, jaco, i);
 
     auto Bmat = this->getLinearBMatrix(shapes);
     auto TrMat = this->getLinearBMatrixTrace(shapes);
@@ -319,7 +315,7 @@ void EL303_ThermoMechanikSolid3D::setTangentResidualNonLinear(
   residual += stiffness * solution;
 
   //std::cout << stiffness.eigenvalues() << std::endl;
-  if (elem->getId()==-1) {
+  if (elem.getId()==-1) {
     std::cout << stiffness.block(0, 0, numDispDofs, numDispDofs) << "\n"
               << std::endl;
     std::cout << stiffness.block(numDispDofs, 0, numDispDofs, numDispDofs)
@@ -470,40 +466,40 @@ auto EL303_ThermoMechanikSolid3D::getBTCBLinear(Geometry::H1Shapes &shapes,Types
 }
 
 void EL303_ThermoMechanikSolid3D::toParaviewAdaper(
-    PointerCollection &pointers, FiniteElement::GenericFiniteElement *elem,
+    PointerCollection &pointers, FiniteElement::Volume &elem,
     vtkPlotInterface &paraviewAdapter, ParaviewSwitch control) {
-  int matNum = static_cast<int>(elem->getMaterial()->getNumber());
+  int matNum = static_cast<int>(elem.getMaterial()->getNumber());
   switch (control) {
   case ParaviewSwitch::Mesh: {
-    elem->geometryToParaview(pointers, paraviewAdapter, 0, matNum);
+    elem.geometryToParaview(pointers, paraviewAdapter, 0, matNum);
 
   } break;
   case ParaviewSwitch::Solution: {
-    elem->H1SolutionToParaview(pointers, paraviewAdapter, 0, matNum,
+    elem.H1SolutionToParaview(pointers, paraviewAdapter, 0, matNum,
                                this->meshIdDisp, this->intOrderDisp,
                                paraviewNames::DisplacementName());
-    elem->H1SolutionToParaview(pointers, paraviewAdapter, 0, matNum,
+    elem.H1SolutionToParaview(pointers, paraviewAdapter, 0, matNum,
                                this->meshidTemp, this->intOrderDisp,
                                paraviewNames::TemperatureName());
   } break;
   case ParaviewSwitch::Weights: {
-    elem->computeWeightsParaview(pointers, paraviewAdapter, 0, matNum);
+    elem.computeWeightsParaview(pointers, paraviewAdapter, 0, matNum);
   } break;
   case ParaviewSwitch::ProjectedValues: {
-    auto GP = elem->getIntegrationPoints(pointers);
+    auto GP = elem.getIntegrationPoints(pointers);
     GP.setOrder(this->intOrderDisp * 2);
 
-    auto Hist = elem->getHistoryDataIterator(pointers);
+    auto Hist = elem.getHistoryDataIterator(pointers);
 
     Materials::MaterialTransferData materialData;
     materialData.historyData = &Hist;
     materialData.strains.resize(6);
     std::vector<DegreeOfFreedom *> Dofs, TDofs;
 
-    elem->getH1Dofs(pointers, Dofs, this->meshIdDisp, this->intOrderDisp);
-    elem->getH1Dofs(pointers, TDofs, this->meshidTemp, this->intOrderDisp);
-    auto solution = elem->getSolution(pointers, Dofs);
-    auto solutionTemp = elem->getSolution(pointers, TDofs);
+    elem.getH1Dofs(pointers, Dofs, this->meshIdDisp, this->intOrderDisp);
+    elem.getH1Dofs(pointers, TDofs, this->meshidTemp, this->intOrderDisp);
+    auto solution = elem.getSolution(pointers, Dofs);
+    auto solutionTemp = elem.getSolution(pointers, TDofs);
     indexType numDispDofs = Dofs.size();
     Types::VectorX<prec>  shapeMat;
     Types::Matrix3X<prec> tempGradient;
@@ -513,8 +509,8 @@ void EL303_ThermoMechanikSolid3D::toParaviewAdaper(
     tempGradient.setZero();
 
     for (auto i : GP) {
-      auto jaco = elem->getJacobian(pointers, i);
-      auto shapes = elem->getH1Shapes(pointers, this->intOrderDisp, jaco, i);
+      auto jaco = elem.getJacobian(pointers, i);
+      auto shapes = elem.getH1Shapes(pointers, this->intOrderDisp, jaco, i);
       for (auto j = 0; j < numDispDofs / 3; ++j) {
         shapeMat(3 * j) = shapes.shapes(j);
         tempGradient(0, 3 * j) = shapes.shapeDeriv(0, j);
@@ -540,19 +536,19 @@ void EL303_ThermoMechanikSolid3D::toParaviewAdaper(
       Types::VectorX<prec> TGrad = (tempGradient * solutionTemp).eval();
       Types::VectorX<prec> Flux = this->kappa * TGrad;
 
-      elem->getMaterialFormulation(pointers)->getMaterialData(pointers, materialData,i);
-      elem->projectDataToParaviewVertices(
+      elem.getMaterialFormulation(pointers)->getMaterialData(pointers, materialData,i);
+      elem.projectDataToParaviewVertices(
           pointers, paraviewAdapter, 0, matNum, this->intOrderDisp, i,
           materialData.strains, 6, paraviewNames::strainName());
-      elem->projectDataToParaviewVertices(
+      elem.projectDataToParaviewVertices(
           pointers, paraviewAdapter, 0, matNum, this->intOrderDisp, i,
           materialData.stresses, 6, paraviewNames::stressName());
 
       
-      elem->projectDataToParaviewVertices(
+      elem.projectDataToParaviewVertices(
           pointers, paraviewAdapter, 0, matNum, this->intOrderDisp, i, TGrad, 3,
           paraviewNames::TemperatureGradientName());
-      elem->projectDataToParaviewVertices(
+      elem.projectDataToParaviewVertices(
           pointers, paraviewAdapter, 0, matNum, this->intOrderDisp, i, Flux, 3,
           paraviewNames::HeatFluxName());
       Hist.next();

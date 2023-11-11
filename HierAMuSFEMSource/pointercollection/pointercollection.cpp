@@ -13,20 +13,21 @@
 #include <memory>
 #include <pointercollection/pointercollection.h>
 
-#include <equations/EquationHandler.h>
+#include "EquationHandler.h"
 #include <finiteElements/ElementList.h>
 #include <geometry/GeometryData.h>
 #include <materials/ElementformulationList.h>
 #include <materials/MaterialList.h>
 #include <materials/MaterialformulationList.h>
 #include <plot/vtkplotClass.h>
+#include "plot/plotControl.h"
 
 #include <solver/GenericSolutionState.h>
 #include <solver/StaticSolutionState.h>
 
 #include <control/HandlingStructs.h>
-#include <loads/LoadList.h>
-#include <loads/PropfunctionHandler.h>
+#include "LoadList.h"
+#include "PropfunctionHandler.h"
 
 #include <algorithm>
 #include <cstdlib>
@@ -64,7 +65,6 @@ PointerCollection::PointerCollection() {
   this->elementFormulationList = nullptr;
 
   InfoData temp;
-  this->intPoints.readData(temp);
   this->m_hasRVEs = false;
 
 }
@@ -132,7 +132,7 @@ std::shared_ptr<PropfunctionHandler> PointerCollection::getPropLoads() {
 }
 
 void PointerCollection::newLoadList() {
-  this->loads = std::make_shared<loadList>();
+  this->loads = std::make_shared<LoadList>();
 }
 
 void PointerCollection::newVtkPlot() {
@@ -286,16 +286,16 @@ std::shared_ptr<Materials::MaterialList> PointerCollection::getMaterialList() {
 std::shared_ptr<InfoData> PointerCollection::getInfoData() {
   return this->Info;
 }
-std::shared_ptr<loadList> PointerCollection::getLoadList() {
+std::shared_ptr<LoadList> PointerCollection::getLoadList() {
   return this->loads;
 }
 
 void PointerCollection::newPrescribedDisplacements()
 {
-  this->prescribedDisplacements = std::make_shared<loadList>();
+  this->prescribedDisplacements = std::make_shared<LoadList>();
 }
 
-std::shared_ptr<loadList> PointerCollection::getPrescribedDisplacements() {
+std::shared_ptr<LoadList> PointerCollection::getPrescribedDisplacements() {
   return this->prescribedDisplacements;
 }
 
@@ -333,15 +333,8 @@ std::shared_ptr<Materials::ElementFormulationList>
 PointerCollection::getElementFormulationList() {
   return this->elementFormulationList;
 }
-IntegrationPoints PointerCollection::getIntegrationPoints(indexType elementId) {
-  return IntegrationPoints(&PointerCollection::intPoints, elementId);
-}
-LobattoShapes &PointerCollection::getLobattoShapes() {
-  return PointerCollection::LobattoFunctions;
-}
-LegendreShapes &PointerCollection::getLegendreShapes() {
-  return PointerCollection::LegendreFunctions;
-}
+
+
 
 //auto PointerCollection::getLogger() -> OutputHandler & {
 //  return this->Info->Log;
@@ -370,6 +363,11 @@ auto PointerCollection::getShallowCopy() -> std::shared_ptr<PointerCollection> {
 
   return newPointers;
 }
+void PointerCollection::setRVEs() {
+  this->solutionState->setHasRVE();
+  this->m_hasRVEs = true;
+}
+auto PointerCollection::hasRVEs() -> bool { return this->m_hasRVEs; };
 void PointerCollection::setSolutionState(SolutionTypes type,
                                          ParameterList &paramList) {
 
@@ -402,9 +400,7 @@ void PointerCollection::setExternalVtkPlot(
   this->vtkPlot = vtkPlotExt;
 }
 
-LegendreShapes PointerCollection::LegendreFunctions = LegendreShapes();
-LobattoShapes PointerCollection::LobattoFunctions = LobattoShapes();
-IntegrationPointsManagement PointerCollection::intPoints =
-    IntegrationPointsManagement();
+
+
 
 } /* namespace HierAMuS */

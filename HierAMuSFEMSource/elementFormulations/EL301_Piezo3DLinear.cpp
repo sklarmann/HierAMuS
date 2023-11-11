@@ -9,15 +9,13 @@
 
 #include <control/HandlingStructs.h>
 #include <control/OutputHandler.h>
+#include "control/ParameterList.h"
 
-#include <equations/DegreeOfFreedom.h>
-#include <equations/GenericNodes.h>
-#include <equations/NodeSet.h>
-#include <equations/Nodetypes.h>
 
-#include <finiteElements/GenericFiniteElement.h>
 
-#include <geometry/Base.h>
+#include <finiteElements/Volume.h>
+
+#include <geometry/GeometryBaseData.h>
 
 
 #include <materials/GenericMaterialFormulation.h>
@@ -34,7 +32,7 @@
 namespace HierAMuS::Elementformulations {
 
 EL301_Piezo3DLinear::EL301_Piezo3DLinear(PointerCollection *ptrCol)
-    : GenericElementFormulation(ptrCol) {}
+    : GenericElementFormulationInterface(ptrCol) {}
 
 EL301_Piezo3DLinear::~EL301_Piezo3DLinear() = default;
 
@@ -47,7 +45,7 @@ void EL301_Piezo3DLinear::readData(PointerCollection &pointers,
   this->intOrderPiezo = list.getIndexVal("piezoorder");
   
   
-  auto Log = pointers.getSPDLogger();
+  auto &Log = pointers.getSPDLogger();
 
   Log.info("\n{:-<100}\n"
                 "*   Element 301, specified Options\n"
@@ -67,12 +65,15 @@ void EL301_Piezo3DLinear::readData(PointerCollection &pointers,
   this->messageUnprocessed(pointers, list,"EL301_Piezo3DLinear");
 }
 
-void EL301_Piezo3DLinear::setDegreesOfFreedom(
-  PointerCollection& pointers, FiniteElement::GenericFiniteElement *elem) {
+void EL301_Piezo3DLinear::setDegreesOfFreedom(PointerCollection &pointers,
+                                              FiniteElement::Volume &elem) {
 
-  elem->setH1Shapes(pointers, this->meshIdDisp, this->intOrderDisp);
-  elem->setH1Shapes(pointers, this->meshIdPiezo, this->intOrderPiezo);
+  elem.setH1Shapes(pointers, this->meshIdDisp, this->intOrderDisp);
+  elem.setH1Shapes(pointers, this->meshIdPiezo, this->intOrderPiezo);
 }
+
+void EL301_Piezo3DLinear::AdditionalOperations(
+    PointerCollection &pointers, FiniteElement::Volume &elem) {}
 
 auto EL301_Piezo3DLinear::getDofs(PointerCollection& pointers, FiniteElement::GenericFiniteElement *elem) -> std::vector<DegreeOfFreedom*> {
   std::vector<DegreeOfFreedom *> Dofs, dispDofs, piezoDofs;
@@ -94,7 +95,7 @@ auto EL301_Piezo3DLinear::getNumberOfIntergrationPoints(
 }
 
 void EL301_Piezo3DLinear::toParaviewAdaper(
-    PointerCollection &pointers, FiniteElement::GenericFiniteElement *elem,
+    PointerCollection &pointers, FiniteElement::Volume &elem,
     vtkPlotInterface &paraviewAdapter, ParaviewSwitch control)
 {
 
@@ -102,13 +103,12 @@ void EL301_Piezo3DLinear::toParaviewAdaper(
 }
 
 void EL301_Piezo3DLinear::setTangentResidual(
-  PointerCollection& pointers, FiniteElement::GenericFiniteElement *elem,
+  PointerCollection& pointers, FiniteElement::Volume &elem,
   Types::MatrixXX<prec> &stiffness, Types::VectorX<prec> &residual, std::vector<DegreeOfFreedom *> &Dofs) {
 
   Types::Matrix3X<prec> shapeDerivDisp, shapeDerivPiezo;
   Types::VectorX<prec> shapeDisp, shapePiezo;
   Types::MatrixXX<prec> Bmat;
-  Types::MatrixXX<prec> jacobi;
   Types::MatrixXX<prec> material;
   Types::VectorX<prec> solution;
 
@@ -119,9 +119,9 @@ void EL301_Piezo3DLinear::setTangentResidual(
   std::vector<DegreeOfFreedom *> dispDofs, piezoDofs;
 
   Dofs.clear();
-  elem->getH1Dofs(pointers, dispDofs, this->meshIdDisp,
+  elem.getH1Dofs(pointers, dispDofs, this->meshIdDisp,
                   this->intOrderDisp);
-  elem->getH1Dofs(pointers, piezoDofs, this->meshIdPiezo,
+  elem.getH1Dofs(pointers, piezoDofs, this->meshIdPiezo,
                   this->intOrderPiezo);
   Dofs.insert(Dofs.begin(), dispDofs.begin(), dispDofs.end());
   Dofs.insert(Dofs.end(), piezoDofs.begin(), piezoDofs.end());
@@ -137,7 +137,7 @@ void EL301_Piezo3DLinear::setTangentResidual(
   residual.resize(numDofs);
   residual.setZero();
 
-  elem->getSolution(pointers, Dofs, solution);
+  elem.getSolution(pointers, Dofs, solution);
 
   material.resize(9, 9);
   material.setZero();
@@ -147,7 +147,7 @@ void EL301_Piezo3DLinear::setTangentResidual(
 
 
   
-  auto GP = elem->getIntegrationPoints(pointers);
+  auto GP = elem.getIntegrationPoints(pointers);
   GP.setOrder(this->intOrderDisp * 2);
 
   prec da;
@@ -155,11 +155,11 @@ void EL301_Piezo3DLinear::setTangentResidual(
   Materials::MaterialTransferData materialData;
 
   for (auto i : GP) {
-    jacobi = elem->getJacobian(pointers, i);
+    Types::Matrix33<prec> jacobi = elem.getJacobian(pointers, i);
     auto H1ShapesDisp =
-        elem->getH1Shapes(pointers, this->intOrderDisp, jacobi, i);
+        elem.getH1Shapes(pointers, this->intOrderDisp, jacobi, i);
     auto H1ShapesPiezo =
-        elem->getH1Shapes(pointers, this->intOrderPiezo, jacobi, i);
+        elem.getH1Shapes(pointers, this->intOrderPiezo, jacobi, i);
 
     for (auto l = 0; l < numDispDofs / 3; l++) {
       Bmat(0, l * 3) = H1ShapesDisp.shapeDeriv(0, l);
@@ -181,7 +181,7 @@ void EL301_Piezo3DLinear::setTangentResidual(
       Bmat(8, numDispDofs + l * 3) = H1ShapesPiezo.shapeDeriv(2, l);
     }
     materialData.strains = Bmat * solution;
-    elem->getMaterialFormulation(pointers)->getMaterialData(pointers, materialData,i);
+    elem.getMaterialFormulation(pointers)->getMaterialData(pointers, materialData,i);
     da = i.weight * jacobi.determinant();
     stiffness += Bmat.transpose() * materialData.materialTangent * Bmat * da;
     residual += Bmat.transpose() * materialData.stresses * da;

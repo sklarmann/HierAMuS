@@ -6,8 +6,10 @@
 #include "MatrixTypes.h"
 #include "finiteElements/GenericFiniteElement.h"
 #include "materials/GenericMaterialFormulation.h"
-#include "equations/DegreeOfFreedom.h"
+#include "DegreeOfFreedom.h"
 #include "shapefunctions/IntegrationsPoints/IntegrationPoints.h"
+#include "pointercollection/pointercollection.h"
+#include "materials/Material.h"
 #include <pybind11/stl.h>
 #include <pybind11/eigen.h>
 #include <vector>
@@ -17,7 +19,7 @@ namespace FiniteElement {
 
 void GenericFiniteElementWrapper::registerFunctions() {
   this->temp
-	.def(py::init<>())
+	//.def(py::init<>())
       .def("getElementType", &GenericFiniteElement::getElementType)
       .def("setAllNodeBoundaryConditionMeshId",
            &GenericFiniteElement::setAllNodeBoundaryConditionMeshId)
@@ -28,8 +30,6 @@ void GenericFiniteElementWrapper::registerFunctions() {
       //.def("getMaterialFormulation",
       //     py::overload_cast<IntegrationPoint &>(&GenericFiniteElement::getMaterialFormulation))
       .def("getMaterialId", &GenericFiniteElement::getMaterialId)
-      .def("insertStiffnessResidual",
-           &GenericFiniteElement::insertStiffnessResidual)
       .def("GenericSetDegreesOfFreedom",
            &GenericFiniteElement::GenericSetDegreesOfFreedom)
       .def("GenericAdditionalOperations",
@@ -52,22 +52,22 @@ void GenericFiniteElementWrapper::registerFunctions() {
       },py::return_value_policy::reference)
       .def("setAllNodeBoundaryConditionMeshId",&GenericFiniteElement::setAllNodeBoundaryConditionMeshId)
 
-      .def("getJacobian",([](GenericFiniteElement &self,PointerCollection &pointers,prec xsi){
+      /*.def("getJacobian",([](GenericFiniteElement &self,PointerCollection &pointers,prec xsi){
         prec jaco;
         self.getJacobian(pointers,jaco,xsi);
         return jaco;
-      }))
+      }))*/
 
-      .def("getJacobian",([](GenericFiniteElement &self,PointerCollection &pointers,prec xsi,prec eta){
+      /*.def("getJacobian",([](GenericFiniteElement &self,PointerCollection &pointers,prec xsi,prec eta){
 
         IntegrationPoint ip;
         ip.xi = xsi;
         ip.eta = eta;
         Types::MatrixXX<prec> jacobi = self.getJacobian(pointers,ip);
         return jacobi;
-      }))
+      }))*/
 
-      .def("getH1Shapes",[](GenericFiniteElement &self, PointerCollection &pointers, indexType order, Types::MatrixXX<prec> &jacobi, prec xsi, prec eta){
+      /*.def("getH1Shapes",[](GenericFiniteElement &self, PointerCollection &pointers, indexType order, Types::MatrixXX<prec> &jacobi, prec xsi, prec eta){
         Types::VectorX<prec> shape;
         Types::Matrix2X<prec> shapederiv;
         IntegrationPoint ip;
@@ -75,7 +75,7 @@ void GenericFiniteElementWrapper::registerFunctions() {
         ip.eta = eta;
         auto H1Shapes = self.getH1Shapes(pointers,order,jacobi,ip);
         return std::make_tuple(H1Shapes.shapes, H1Shapes.shapeDeriv);
-      })
+      })*/
       .def("getMaterialFormulation",py::overload_cast<PointerCollection&>(&GenericFiniteElement::getMaterialFormulation))
       .def("getMaterialFormulation",
            py::overload_cast<PointerCollection & , IntegrationPoint &>(

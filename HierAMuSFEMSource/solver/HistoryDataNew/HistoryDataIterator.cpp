@@ -13,11 +13,12 @@ HistoryDataIterator::HistoryDataIterator(
     Eigen::Map<Types::VectorX<prec>> &materialNew,
     Eigen::Map<Types::VectorX<prec>> &materialOld,
     Eigen::Map<Types::VectorX<prec>> &materialConst)
-    : m_elementOldMap(elementOld), m_elementNewMap(elementNew),
-      m_elementConstMap(elementConst), m_materialNewMap(materialNew),
-      m_materialOldMap(materialOld), m_materialConstMap(materialConst),
-      m_elementUpdatePosition(0), m_elementConstPosition(0),
-      m_materialConstPosition(0), m_materialUpdatePosition(0) {}
+    : m_elementStructure(nullptr), m_elementOldMap(elementOld),
+      m_elementNewMap(elementNew), m_elementUpdatePosition(0),
+      m_elementConstMap(elementConst), m_elementConstPosition(0),
+      m_materialStructure(nullptr), m_materialOldMap(materialOld),
+      m_materialNewMap(materialNew), m_materialUpdatePosition(0),
+      m_materialConstMap(materialConst), m_materialConstPosition(0) {}
 
 void HistoryDataIterator::setElementStructure(
     const HistoryDataStructure &structure) {

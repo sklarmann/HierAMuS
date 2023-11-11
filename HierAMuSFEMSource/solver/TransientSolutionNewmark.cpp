@@ -2,19 +2,21 @@
 //
 // SPDX-License-Identifier: BSD-3-Clause
 
-#include <solver/TransientSolutionNewmark.h>
-#include <solver/GenericSolver.h>
+#include "solver/TransientSolutionNewmark.h"
+#include "solver/GenericSolver.h"
 
-#include <pointercollection/pointercollection.h>
+#include "pointercollection/pointercollection.h"
 
-#include <equations/DofStatus.h>
-#include <equations/DegreeOfFreedom.h>
-#include <equations/EquationHandler.h>
+//Equations
+#include "EquationHandler.h"
 
-#include <loads/LoadList.h>
-#include <loads/PropfunctionHandler.h>
+#include "LoadList.h"
+#include "PropfunctionHandler.h"
 
-#include <finiteElements/ElementList.h>
+#include "finiteElements/ElementList.h"
+#include "finiteElements/GenericFiniteElement.h"
+
+#include "control/ParameterList.h"
 
 namespace HierAMuS {
 
@@ -136,7 +138,7 @@ void TransientSolutionNewmark::computeLoads(PointerCollection &pointers) {
 
   auto eqHandler = pointers.getEquationHandler();
 
-  pointers.getLoadList()->computeLoads(pointers, ids, load, loadinc);
+  pointers.getLoadList()->computeLoads(*this->getProps(), ids, load, loadinc);
   for (auto i = 0; i < ids.size(); ++i) {
     auto &dof = eqHandler->getDegreeOfFreedom(ids[i]);
     if (dof.getStatus() != dofStatus::inactive) {
@@ -163,7 +165,7 @@ void TransientSolutionNewmark::assembleSystem(PointerCollection& pointers) {
   //#pragma omp parallel for private(elem,stiffness,residual, Dofs) schedule(dynamic)
   for (indexType i = 0; i < numberOfElements; ++i) {
     Dofs.clear();
-    elem = elemList->getElement(i);
+    elem = elemList->getElement(pointers, i);
     elem->GenericSetTangentResidual(pointers, stiffness, residual, Dofs);
     this->insertStiffnessResidual(stiffness, residual, Dofs);
     stiffness.setZero();

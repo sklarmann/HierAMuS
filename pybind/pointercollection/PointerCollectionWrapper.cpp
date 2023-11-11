@@ -4,18 +4,20 @@
 
 #include "PointerCollectionWrapper.h"
 
-#include "equations/EquationHandler.h"
+#include "EquationHandler.h"
 #include "finiteElements/ElementList.h"
-#include "forwarddeclaration.h"
 #include "materials/MaterialList.h"
 #include "materials/ElementformulationList.h"
 #include "materials/MaterialformulationList.h"
-#include "loads/LoadList.h"
-#include "loads/PropfunctionHandler.h"
+#include "LoadList.h"
+#include "PropfunctionHandler.h"
+#include "solver/GenericSolutionState.h"
+#include "plot/plotControl.h"
+#include "plot/vtkplotClass.h"
+#include "control/ParameterList.h"
 
 void HierAMuS::PointerCollectionWrapper::registerFunctions() {
   this->temp.def(py::init<>())
-      .def("setDebug", &HierAMuS::PointerCollection::setDebug)
       .def("renew", &HierAMuS::PointerCollection::renew,
            "Resets the data in class PointerCollection.")
       // Geometry
@@ -51,9 +53,9 @@ void HierAMuS::PointerCollectionWrapper::registerFunctions() {
     // Proploads
       .def("getPropLoads",&PointerCollection::getPropLoads)
     // vtkPlot
-      .def("getVtkPlotInterface",&PointerCollection::getVtkPlotInterface,py::return_value_policy::reference)
-      .def("getIntegrationPoints",&HierAMuS::PointerCollection::getIntegrationPoints)
-      .def("getLoadList",&HierAMuS::PointerCollection::getLoadList,py::return_value_policy::reference)
+      .def("getVtkPlotInterface",&PointerCollection::getVtkPlotInterface)
+      .def("getLoadList",&HierAMuS::PointerCollection::getLoadList)
+      .def("getPrescribedDisplacements",&HierAMuS::PointerCollection::getPrescribedDisplacements)
       .def("setMaxThreads", &PointerCollection::setMaxThreads)
       .def("getPlotControlInterface",
            &PointerCollection::getPlotControlInterface)

@@ -7,7 +7,7 @@
 
 namespace py = pybind11;
 
-#include "loads/LoadList.h"
+#include "LoadList.h"
 
 namespace HierAMuS {
 //class PyInfoData : public InfoData {
@@ -25,7 +25,7 @@ public:
   void registerFunctions();
 
 private:
-  typedef py::class_<loadList, std::shared_ptr<loadList>>
+  typedef py::class_<LoadList, std::shared_ptr<LoadList>>
       pw;
   pw temp;
 };

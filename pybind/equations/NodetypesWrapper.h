@@ -7,7 +7,7 @@
 
 namespace py = pybind11;
 
-#include "equations/Nodetypes.h"
+#include "Nodetypes.h"
 
 namespace HierAMuS {
 

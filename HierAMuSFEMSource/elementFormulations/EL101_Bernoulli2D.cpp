@@ -5,14 +5,14 @@
 #include <elementFormulations/GenericElementFormulation.h>
 #include <elementFormulations/EL101_Bernoulli2D.h>
 
-#include <finiteElements/GenericFiniteElement.h>
+#include <finiteElements/Edge.h>
 
-#include <geometry/Base.h>
-#include <geometry/Vertex.h>
+#include <geometry/GeometryBaseData.h>
+#include <geometry/VertexData.h>
 
-#include <equations/NodeSet.h>
-#include <equations/GenericNodes.h>
-#include <equations/EquationHandler.h>
+
+
+#include "control/ParameterList.h"
 
 #include <pointercollection/pointercollection.h>
 
@@ -21,7 +21,7 @@
 namespace HierAMuS::Elementformulations {
 
 EL101_Bernoulli2D::EL101_Bernoulli2D(PointerCollection *ptrCol)
-    : GenericElementFormulation(ptrCol) {}
+    : GenericElementFormulationInterface(ptrCol) {}
 
 EL101_Bernoulli2D::~EL101_Bernoulli2D() = default;
 
@@ -36,10 +36,13 @@ void EL101_Bernoulli2D::readData(PointerCollection &pointers,
 
 }
 
-void EL101_Bernoulli2D::setDegreesOfFreedom(
-  PointerCollection& pointers, FiniteElement::GenericFiniteElement *elem) {
-  elem->setH1Shapes(pointers, this->meshIdDisp, 1);
+void EL101_Bernoulli2D::setDegreesOfFreedom(PointerCollection &pointers,
+                                            FiniteElement::Edge &elem) {
+  elem.setH1Shapes(pointers, this->meshIdDisp, 1);
 }
+
+void EL101_Bernoulli2D::AdditionalOperations(
+    PointerCollection &pointers, FiniteElement::Edge &elem) {}
 
 auto EL101_Bernoulli2D::getDofs(PointerCollection& pointers, FiniteElement::GenericFiniteElement *elem)
 -> std::vector<DegreeOfFreedom *> {
@@ -50,21 +53,23 @@ auto EL101_Bernoulli2D::getDofs(PointerCollection& pointers, FiniteElement::Gene
 
 void EL101_Bernoulli2D::setTangentResidual(
   PointerCollection& pointers,
-  FiniteElement::GenericFiniteElement *elem,
+  FiniteElement::Edge &elem,
   Eigen::Matrix<prec, Eigen::Dynamic, Eigen::Dynamic> &stiffness,
   Eigen::Matrix<prec, Eigen::Dynamic, 1> &residual, std::vector<DegreeOfFreedom *> &Dofs) {
 
-  auto &vert1 = elem->getVertex(pointers, 0);
-  auto &vert2 = elem->getVertex(pointers, 1);
+  auto &vert1 = elem.getVertex(pointers, 0);
+  auto &vert2 = elem.getVertex(pointers, 1);
   Types::Vector3<prec> coor1, coor2;
   coor1 = vert1.getCoordinates();
   coor2 = vert2.getCoordinates();
 
   prec length;
   Dofs.clear();
-  elem->getH1Dofs(pointers, Dofs, this->meshIdDisp, 1);
-  elem->getJacobian(pointers, length, (prec)0);
-  length *= 2;
+  elem.getH1Dofs(pointers, Dofs, this->meshIdDisp, 1);
+  IntegrationPoint ip;
+  ip.xi = 0;
+  length = elem.getJacobian(pointers, ip);
+  length *= prec(2);
 
   stiffness.resize(6, 6);
   residual.resize(6);
@@ -130,7 +135,7 @@ auto EL101_Bernoulli2D::getNumberOfIntergrationPoints(
   return 0;
 }
 void EL101_Bernoulli2D::toParaviewAdaper(
-    PointerCollection &pointers, FiniteElement::GenericFiniteElement *elem,
+    PointerCollection &pointers, FiniteElement::Edge &elem,
     vtkPlotInterface &paraviewAdapter, ParaviewSwitch control)
 {
   pointers.getSPDLogger().warn("WARNING: Plot functionality for element formulation EL101_Bernoulli2D not implemented");

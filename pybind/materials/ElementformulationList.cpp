@@ -10,6 +10,7 @@ namespace py = pybind11;
 
 #include "materials/ElementformulationList.h"
 #include "pointercollection/pointercollection.h"
+#include "control/ParameterList.h"
 
 class PyElementFormulationList : public HierAMuS::Materials::ElementFormulationList {
 public:

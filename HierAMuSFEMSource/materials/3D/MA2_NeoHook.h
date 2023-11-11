@@ -6,23 +6,26 @@
 
 #pragma once
 
-#include <forwarddeclaration.h>
 
-#include <materials/GenericMaterialFormulation.h>
-#include <types/MatrixTypes.h>
+#include "materials/GenericMaterialFormulation.h"
+#include "types/MatrixTypes.h"
 
-namespace HierAMuS::Materials {
+namespace HierAMuS {
+namespace Materials {
 
 class MA2_NeoHook : public GenericMaterialFormulation {
 public:
   explicit MA2_NeoHook(PointerCollection *ptrCol);
   ~MA2_NeoHook() override;
 
-  void readData(PointerCollection& pointers, ParameterList &list) override;
-  void getMaterialData(PointerCollection& pointers, MaterialTransferData &material_in_out, IntegrationPoint& ip) override;
+  void readData(PointerCollection &pointers, ParameterList &list) override;
+  void getMaterialData(PointerCollection &pointers,
+                       MaterialTransferData &material_in_out,
+                       IntegrationPoint &ip) override;
 
 private:
   prec m_G, m_Lambda;
 };
 
+} // namespace Materials
 } // namespace HierAMuS

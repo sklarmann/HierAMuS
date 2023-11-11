@@ -11,8 +11,8 @@
 namespace py = pybind11;
 
 #include "elementFormulations/EL290_PythonElement.h"
-#include "finiteElements/GenericFiniteElement.h"
-#include "equations/DegreeOfFreedom.h"
+#include "finiteElements/Face.h"
+#include "DegreeOfFreedom.h"
 #include <vector>
 
 namespace HierAMuS {
@@ -21,20 +21,20 @@ class PyEL290_2DPythonElement : public EL290_2DPythonElement {
 public:
   using EL290_2DPythonElement::EL290_2DPythonElement;
 
-  void setDegreesOfFreedom(PointerCollection& pointers, FiniteElement::GenericFiniteElement *elem) {
+  void setDegreesOfFreedom(PointerCollection& pointers, FiniteElement::Face &elem) {
     PYBIND11_OVERLOAD(void, EL290_2DPythonElement, setDegreesOfFreedom, pointers, elem);
   }
 
-  void AdditionalOperations(PointerCollection& pointers, FiniteElement::GenericFiniteElement *elem){
+  void AdditionalOperations(PointerCollection& pointers, FiniteElement::Face &elem){
     PYBIND11_OVERLOAD(void, EL290_2DPythonElement,AdditionalOperations,pointers,elem);
   }
 
   std::tuple<Types::MatrixXX<prec>, Types::VectorX<prec>,
              std::vector<DegreeOfFreedom *>>
-  PySetTangentResidual(FiniteElement::GenericFiniteElement *elem){
+  PySetTangentResidual(FiniteElement::GenericFiniteElement &elem){
     typedef std::tuple<Types::MatrixXX<prec>, Types::VectorX<prec>,
                        std::vector<DegreeOfFreedom *>> returnType;
-    PYBIND11_OVERLOAD(returnType,EL290_2DPythonElement, PySetTangentResidual,elem);
+    PYBIND11_OVERLOAD(returnType,EL290_2DPythonElement, PySetTangentResidual,&elem);
 
   }
 

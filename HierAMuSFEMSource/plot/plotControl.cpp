@@ -7,6 +7,8 @@
 #include "plot/vtkplotClass.h"
 
 #include "finiteElements/ElementList.h"
+#include "finiteElements/GenericFiniteElement.h"
+#include "pointercollection/pointercollection.h"
 
 namespace HierAMuS {
 
@@ -33,7 +35,7 @@ void PlotControl::initializeMesh(PointerCollection &pointers)
     indexType numberOfElements = elemList->getNumberOfElements();
 
     for (auto i = 0; i < numberOfElements; ++i) {
-      elemList->getElement(i)->toParaviewAdapter(pointers, *m_plot,
+      elemList->getElement(pointers, i)->toParaviewAdapter(pointers, *m_plot,
                                                  ParaviewSwitch::Mesh);
     }
   }
@@ -57,11 +59,13 @@ void PlotControl::toFile(PointerCollection &pointers) {
   indexType numberOfElements = elemList->getNumberOfElements();
 
   for (auto i = 0; i < numberOfElements; ++i) {
-    elemList->getElement(i)->toParaviewAdapter(pointers, *m_plot,
+    elemList->getElement(pointers, i)->toParaviewAdapter(pointers, *m_plot,
                                                ParaviewSwitch::Weights);
-    elemList->getElement(i)->toParaviewAdapter(pointers, *m_plot,
+    elemList->getElement(pointers, i)
+        ->toParaviewAdapter(pointers, *m_plot,
                                                ParaviewSwitch::Solution);
-    elemList->getElement(i)->toParaviewAdapter(pointers, *m_plot,
+    elemList->getElement(pointers, i)
+        ->toParaviewAdapter(pointers, *m_plot,
                                                ParaviewSwitch::ProjectedValues);
   }
   m_plot->toFile(infos->fileNames[FileHandling::directory],

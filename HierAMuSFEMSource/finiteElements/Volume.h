@@ -6,13 +6,13 @@
 
 #pragma once
 
-#include "GenericFiniteElement.h"
-#include "geometry/Faces.h"
-#include "geometry/Volumes.h"
+#include "GenericFiniteElementInterface.h"
+#include "geometry/Faces/FacesData.h"
+#include "geometry/Volumes/VolumesData.h"
 #include "shapefunctions/IntegrationsPoints/IntegrationPoints.h"
 
 namespace HierAMuS::FiniteElement {
-class Volume : public GenericFiniteElement {
+class Volume : public GenericFiniteElementInterface<Volume> {
   using ptrCol = PointerCollection;
 
 public:
@@ -21,17 +21,19 @@ public:
 
   auto getType() -> Elementtypes override;
 
+  void set_pointers(PointerCollection &pointers) override;
+
   void setVolume(indexType volumeIn) override;
   auto getVertexIds(PointerCollection& pointers) -> std::vector<indexType> override;
 
   auto getVertex(ptrCol &pointers, indexType localNumber)
-      -> Geometry::Vertex & override;
+      -> Geometry::VertexData & override;
   auto getEdge(ptrCol &pointers, indexType localNumber)
-      -> Geometry::Edges & override;
+      -> Geometry::EdgesData & override;
   auto getFace(ptrCol &pointers, indexType localNumber)
-      -> Geometry::Faces * override;
+      -> Geometry::FacesData * override;
   auto getVolume(ptrCol &pointers, indexType localNumber)
-      -> Geometry::Volumes * override;
+      -> Geometry::VolumesData * override;
   
 
   void setAllNodeBoundaryConditionMeshId(ptrCol &pointers, indexType meshId,
@@ -63,9 +65,7 @@ public:
    * @return Types::MatrixXX<prec>, Jacobian matrix at the current IntegrationPoint.
    */
    auto getJacobian(ptrCol &pointers, IntegrationPoint &IntegrationPt)
-      -> Types::MatrixXX<prec> override;
-  void getJacobian(ptrCol &pointers, Types::Matrix33<prec> &jacobi, prec xsi,
-                   prec eta, prec zeta) override;
+      -> Types::Matrix33<prec>;
 
   // H1 Shapes
   /**
@@ -83,14 +83,6 @@ public:
                  indexType meshID, indexType order) override;
   auto getH1Nodes(ptrCol &pointers, indexType meshID, indexType order)
       -> std::vector<GenericNodes *> override;
-  void getH1Shapes(ptrCol &pointers, indexType order,
-                           Types::MatrixXX<prec> &jacobi,
-                           Types::VectorX<prec> &shape,
-                           Types::MatrixXX<prec> &shapeDerivative,
-                           IntegrationPoint &IntegrationPt) override;
-  void getH1Shapes(ptrCol &pointers, indexType order,
-                   Types::Matrix33<prec> &jacobi, Types::VectorX<prec> &shape,
-                   Types::Matrix3X<prec> &dshape, prec xi, prec eta, prec zeta) override;
 
   /**
    * @brief New version of getH1Shapes.
@@ -101,9 +93,9 @@ public:
    * @return H1Shapes, H1 shape functions evaluation ath the IntegrationPoint.
    */
   auto getH1Shapes(ptrCol &pointers, indexType order,
-                           Types::MatrixXX<prec> &jacobi,
+                           Types::Matrix33<prec> &jacobi,
                            IntegrationPoint &IntegrationPt)
-      -> Geometry::H1Shapes override;
+      -> Geometry::H1Shapes;
 
   /**
    * @brief Get the Integration Points object. Returns the IntegrationPoints object, already set to the correct type. Only the integration order needs to be specified.
@@ -119,32 +111,30 @@ public:
 
   void getHDivDofs(ptrCol &pointers, std::vector<DegreeOfFreedom *> &Dofs,
                    indexType meshID, indexType order) override;
-  void getHDivShapes(ptrCol &pointers, indexType order,
-                     Types::Matrix22<prec> &jacobi,
-                     Types::Matrix2X<prec> &shape, Types::VectorX<prec> &dshape,
-                     prec xi, prec eta) override;
 
-  void toParaviewAdapter(PointerCollection &ptrCol, vtkPlotInterface &catalyst,
-                         const ParaviewSwitch &ToDo);
+
+
 
   // Paraview
-  void geometryToParaview(PointerCollection &pointers,
+  virtual void geometryToParaview(PointerCollection &pointers,
                           vtkPlotInterface &paraviewAdapter, indexType mainMesh,
-                          indexType subMesh) override;
+                          indexType subMesh);
   void computeWeightsParaview(PointerCollection &pointers,
                               vtkPlotInterface &paraviewAdapter,
-                              indexType mainMesh, indexType subMesh) override;
+                              indexType mainMesh, indexType subMesh);
   void H1SolutionToParaview(PointerCollection &pointers,
                             vtkPlotInterface &paraviewAdapter,
                             indexType mainMesh, indexType subMesh,
-                            indexType meshId, indexType order, std::string name) override;
+                            indexType meshId, indexType order, std::string name);
   void projectDataToParaviewVertices(
       PointerCollection &pointers, vtkPlotInterface &paraviewAdapter,
       indexType mainMesh, indexType subMesh, indexType order,
       IntegrationPoint &IntegrationPt, Types::VectorX<prec> &data,
-      indexType numberComponents, std::string name) override;
+      indexType numberComponents, std::string name);
 
 protected:
-  indexType volume;
+  indexType m_volume;
+  Geometry::VolumesData *m_volume_object;
+  std::shared_ptr<Geometry::VolumesRuntime> m_volume_runtime;
 };
 } // namespace HierAMuS

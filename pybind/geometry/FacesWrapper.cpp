@@ -7,29 +7,22 @@
 //
 
 #include "FacesWrapper.h"
-#include "geometry/Faces.h"
+#include "geometry/Faces/FacesData.h"
 #include "geometry/GeometryData.h"
 #include "pybind11/stl.h"
 
-
-namespace HierAMuS{
+namespace HierAMuS {
 namespace Geometry {
 
 void FacesWrapper::registerFunctions() {
-  this->temp.def("setVerts",&Faces::setVerts)
-  .def("setEdges",&Faces::setEdges)
-  .def("getVertNums", [](Faces &self){
-    std::vector<indexType> vertsOut;
-    self.getVerts(vertsOut);
-    return vertsOut;
-  })
-  .def("getEdgeNums",[](Faces &self){
-    std::vector<indexType> edgesOut;
-    edgesOut.resize(0);
-    self.getEdges(edgesOut);
-    return edgesOut;
-  });
+  this->temp.def("setVerts", &FacesData::setVerts)
+      .def("setEdges", &FacesData::setEdges)
+      .def("getVertNums", [](FacesData &self) { return self.getVertexNumbers(); })
+      .def("getEdgeNums", [](FacesData &self) {
+        auto edgesOut = self.getEdgeNumbers();
+        return edgesOut;
+      });
 }
 
-}
-}
+} // namespace Geometry
+} // namespace HierAMuS

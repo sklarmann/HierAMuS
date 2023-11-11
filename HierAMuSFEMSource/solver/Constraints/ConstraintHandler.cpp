@@ -7,15 +7,24 @@
 #include "MatrixTypes.h"
 #include "control/BinaryWrite.h"
 #include "datatypes.h"
-#include "equations/DegreeOfFreedom.h"
-#include "equations/EquationHandler.h"
 #include "math/EigenSparseOperations.h"
+
+// Geometry
+#include "geometry/GeometryData.h"
+#include "geometry/Edges/LinearEdgeRuntime.h"
+#include "geometry/Faces/FacesRuntime.h"
+
 
 #include "control/BinaryWrite.h"
 
 #include "Timer.h"
-#include "geometry/GeometryData.h"
 #include "shapefunctions/IntegrationsPoints/IntegrationPoints.h"
+#include "geometry/VertexData.h"
+#include "geometry/Edges/EdgesData.h"
+#include "geometry/Faces/FacesData.h"
+
+// Equations
+#include "EquationHandler.h"
 
 namespace HierAMuS {
 ConstraintHandler::ConstraintHandler() {}
@@ -248,11 +257,11 @@ void ConstraintHandler::LinkVertex(PointerCollection &pointers,
                                    indexType slaveDof, prec factor,
                                    prec difference) {
 
-  auto &mVert = pointers.getGeometryData()->getVertex(masterVert);
-  auto &sVert = pointers.getGeometryData()->getVertex(slaveVert);
+  auto &mVert = pointers.getGeometryData()->getVertexData(masterVert);
+  auto &sVert = pointers.getGeometryData()->getVertexData(slaveVert);
   std::vector<GenericNodes *> mNodes, sNodes;
-  mVert.getNodes(pointers, mNodes, meshId);
-  sVert.getNodes(pointers, sNodes, meshId);
+  mVert.getNodes(mNodes, meshId);
+  sVert.getNodes(sNodes, meshId);
 
   this->LinkDofs(pointers, mNodes[0]->getDegreeOfFreedom(masterDof).getId(),
                  sNodes[0]->getDegreeOfFreedom(slaveDof).getId(), factor,
@@ -262,11 +271,11 @@ void ConstraintHandler::LinkVertex(PointerCollection &pointers,
 void ConstraintHandler::LinkEdges(PointerCollection &pointers, indexType meshId,
                                   indexType masterEdge, indexType slaveEdge,
                                   indexType masterDof, indexType slaveDof,
-                                  indexType factor, indexType difference,
+                                  prec factor, prec difference,
                                   bool reorient) {
-
-  auto &mEdge = pointers.getGeometryData()->getEdge(masterEdge);
-  auto &sEdge = pointers.getGeometryData()->getEdge(slaveEdge);
+  auto geoData = pointers.getGeometryData();
+  auto &mEdge = geoData->getEdgeData(masterEdge);
+  auto &sEdge = geoData->getEdgeData(slaveEdge);
 
   auto nvertsm = mEdge.getNumberOfVerts();
 
@@ -280,12 +289,15 @@ void ConstraintHandler::LinkEdges(PointerCollection &pointers, indexType meshId,
 
   IntegrationPoint ip;
   ip.xi = prec(0);
-  auto mEvec = mEdge.getA1Vector(pointers, ip);
-  auto sEvec = sEdge.getA1Vector(pointers, ip);
+  auto mEvec = mEdge.getA1Vector(ip);
+  auto sEvec = sEdge.getA1Vector(ip);
   prec dotVal = mEvec.dot(sEvec);
   if (dotVal > prec(1.01) || dotVal < prec(0.99)) {
     if (reorient) {
       sEdge.flip();
+      geoData
+          ->getEdgeRuntime(sEdge.getId())
+          ->flip();
     } else {
       pointers.getSPDLogger().warn("Warning: When linking edge: {} to edge: {}."
                                    " Edge orientations are different! Check if "
@@ -300,11 +312,11 @@ void ConstraintHandler::LinkEdges(PointerCollection &pointers, indexType meshId,
                      difference);
   }
 
-  auto mNodes = mEdge.getNodesOfSet(pointers, meshId);
-  auto sNodes = sEdge.getNodesOfSet(pointers, meshId);
+  auto mNodes = mEdge.getNodesOfSet(meshId);
+  auto sNodes = sEdge.getNodesOfSet(meshId);
 
   if (mNodes.size() == sNodes.size() && mNodes.size() != 0) {
-    for (indexType i = 0; i < mNodes.size(); ++i) {
+    for (indexType i = 0; i < static_cast<indexType>(mNodes.size()); ++i) {
       auto &mDof = mNodes[i]->getDegreeOfFreedom(masterDof);
       auto &sDof = sNodes[i]->getDegreeOfFreedom(slaveDof);
       this->LinkDofs(pointers, mDof.getId(), sDof.getId(), factor, difference);
@@ -315,10 +327,11 @@ void ConstraintHandler::LinkEdges(PointerCollection &pointers, indexType meshId,
 void ConstraintHandler::LinkFaces(PointerCollection &pointers, indexType meshId,
                                   indexType masterFace, indexType slaveFace,
                                   indexType masterDof, indexType slaveDof,
-                                  indexType factor, indexType difference,
+                                  prec factor, prec difference,
                                   bool reorient) {
-  auto mFace = pointers.getGeometryData()->getFace(masterFace);
-  auto sFace = pointers.getGeometryData()->getFace(slaveFace);
+  auto geoData = pointers.getGeometryData();
+  auto mFace = geoData->getFaceData(masterFace);
+  auto sFace = geoData->getFaceData(slaveFace);
 
   if (mFace->getType() != sFace->getType()) {
     pointers.getSPDLogger().error(
@@ -329,17 +342,21 @@ void ConstraintHandler::LinkFaces(PointerCollection &pointers, indexType meshId,
   }
 
   if (reorient) {
-    Types::Vector3<prec> snormal = sFace->getFaceNormal(pointers);
-    Types::Vector3<prec> mnormal = mFace->getFaceNormal(pointers);
+    Types::Vector3<prec> snormal = sFace->getFaceNormal();
+    Types::Vector3<prec> mnormal = mFace->getFaceNormal();
     if (abs(snormal.dot(mnormal) - prec(1)) >
-        std::numeric_limits<prec>::epsilon() * prec(1000))
+        std::numeric_limits<prec>::epsilon() * prec(1000)) {
       sFace->flip();
+      geoData->getFaceRuntime(sFace->getId())->flip();
+    }
+      
+      
 
     IntegrationPoint faceIp;
     faceIp.xi = prec(0);
     faceIp.eta = prec(0);
-    auto mG1 = mFace->getTangent_G1(pointers, faceIp).normalized();
-    auto sG1 = sFace->getTangent_G1(pointers, faceIp).normalized();
+    auto mG1 = mFace->getTangent_G1(faceIp).normalized();
+    auto sG1 = sFace->getTangent_G1(faceIp).normalized();
 
     prec dd = abs(mG1.dot(sG1) - prec(1));
     indexType cc = 0;
@@ -347,7 +364,8 @@ void ConstraintHandler::LinkFaces(PointerCollection &pointers, indexType meshId,
     while (dd > std::numeric_limits<prec>::epsilon() * prec(1000) &&
            cc < numVerts) {
       sFace->rotate(1);
-      auto sG1 = sFace->getTangent_G1(pointers, faceIp).normalized();
+      geoData->getFaceRuntime(sFace->getId())->rotate(1);
+      auto sG1 = sFace->getTangent_G1(faceIp).normalized();
       dd = abs(mG1.dot(sG1) - prec(1));
       ++cc;
     }
@@ -362,15 +380,15 @@ void ConstraintHandler::LinkFaces(PointerCollection &pointers, indexType meshId,
   indexType nEdges = mFace->getNumberOfEdges();
 
   for (indexType i = 0; i < nEdges; ++i) {
-    this->LinkEdges(pointers, meshId, mFace->getEdge(i), sFace->getEdge(i),
+    this->LinkEdges(pointers, meshId, mFace->getEdgeNumber(i), sFace->getEdgeNumber(i),
                     masterDof, slaveDof, factor, difference, reorient);
   }
 
-  auto mNodes = mFace->getNodesOfSet(pointers, meshId);
-  auto sNodes = sFace->getNodesOfSet(pointers, meshId);
+  auto mNodes = mFace->getNodesOfSet(meshId);
+  auto sNodes = sFace->getNodesOfSet(meshId);
 
   if (mNodes.size() == sNodes.size() && mNodes.size() != 0) {
-    for (indexType i = 0; i < mNodes.size(); ++i) {
+    for (indexType i = 0; i < static_cast<indexType>(mNodes.size()); ++i) {
       auto &mDof = mNodes[i]->getDegreeOfFreedom(masterDof);
       auto &sDof = sNodes[i]->getDegreeOfFreedom(slaveDof);
       this->LinkDofs(pointers, mDof.getId(), sDof.getId(), factor, difference);

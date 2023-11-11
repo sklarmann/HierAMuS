@@ -4,10 +4,10 @@
 
 #include "GeneralLink.h"
 
-#include "equations/DegreeOfFreedom.h"
-#include "equations/EquationHandler.h"
+#include "EquationHandler.h"
 
 #include "control/BinaryWrite.h"
+#include "solver/GenericSolutionState.h"
 
 namespace HierAMuS {
 
@@ -155,11 +155,13 @@ auto GeneralLink::getDB(PointerCollection &pointers)
   dB.resize(eqHandler->getNumberOfInActiveEquations());
 
 
-  auto &DofM = pointers.getEquationHandler()->getDegreeOfFreedom(m_masterDof);
+  auto &DofM = eqHandler->getDegreeOfFreedom(m_masterDof);
   
-  auto &DofS = pointers.getEquationHandler()->getDegreeOfFreedom(m_slaveDof);
-  auto msol = pointers.getSolutionState()->getSolution(DofM.getId());
-  auto ssol = pointers.getSolutionState()->getSolution(DofS.getId());
+  auto &DofS = eqHandler->getDegreeOfFreedom(m_slaveDof);
+
+  auto sol = pointers.getSolutionState();
+  auto msol = sol->getSolution(DofM.getId());
+  auto ssol = sol->getSolution(DofS.getId());
   prec dBB = m_difference - ssol + m_factor * msol;
   //dBB *= prec(-1);
 

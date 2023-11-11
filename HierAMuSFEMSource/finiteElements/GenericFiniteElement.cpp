@@ -27,7 +27,7 @@
 
 namespace HierAMuS::FiniteElement {
 
-GenericFiniteElement::GenericFiniteElement() { this->material = nullptr; }
+GenericFiniteElement::GenericFiniteElement() { this->m_material = nullptr; }
 
 GenericFiniteElement::~GenericFiniteElement() = default;
 
@@ -36,36 +36,18 @@ GenericFiniteElement::~GenericFiniteElement() = default;
 void GenericFiniteElement::setAllNodeBoundaryConditionMeshId(ptrCol &pointers,
                                                              indexType meshId,
                                                              indexType dof) {}
+ 
 
-void GenericFiniteElement::insertStiffnessResidual(
-    Eigen::Matrix<prec, Eigen::Dynamic, Eigen::Dynamic> &stiffness,
-    Eigen::Matrix<prec, 1, Eigen::Dynamic> &residual,
-    std::vector<indexType> &eqIds, std::vector<dofStatus> &eqStatus) {}
 
-void GenericFiniteElement::GenericSetDegreesOfFreedom(PointerCollection& pointers) {
-
-  this->material->getElementFormulation(pointers)->setDegreesOfFreedom(pointers,this);
-}
-
-void GenericFiniteElement::GenericAdditionalOperations(PointerCollection& pointers) {
-  this->material->getElementFormulation(pointers)->AdditionalOperations(pointers, this);
-}
 
 auto GenericFiniteElement::getDofs(PointerCollection& pointers) -> std::vector<DegreeOfFreedom *> {
-  return this->material->getElementFormulation(pointers)->getDofs(pointers, this);
+  return this->m_material->getElementFormulation(pointers)->getDofs(pointers, this);
 }
 
-void GenericFiniteElement::GenericSetTangentResidual(
-  PointerCollection& pointers,
-  Eigen::Matrix<prec, Eigen::Dynamic, Eigen::Dynamic> &stiffness,
-  Eigen::Matrix<prec, Eigen::Dynamic, 1> &residual, std::vector<DegreeOfFreedom *> &Dofs) {
 
-  this->material->getElementFormulation(pointers)->setTangentResidual(pointers, this,
-                                                              stiffness, residual, Dofs);
-}
 
 auto GenericFiniteElement::computeNorm(GenericFiniteElement::ptrCol& pointers, NormTypes type) -> prec {
-  return this->material->getElementFormulation(pointers)->computeNorm(pointers, this, type);
+  return this->m_material->getElementFormulation(pointers)->computeNorm(pointers, this, type);
 }
 
 
@@ -73,13 +55,13 @@ void GenericFiniteElement::GenericSetMass(
   PointerCollection& pointers,
   Eigen::Matrix<prec, Eigen::Dynamic, Eigen::Dynamic> &stiffness,
   Eigen::Matrix<prec, Eigen::Dynamic, 1> &residual, std::vector<DegreeOfFreedom *> &Dofs) {
-  this->material->getElementFormulation(pointers)->setMass(pointers, this, stiffness, residual,
+  this->m_material->getElementFormulation(pointers)->setMass(pointers, this, stiffness, residual,
                                                    Dofs);
 }
 
 void GenericFiniteElement::getElementsLocalNodalReactions(
     PointerCollection &ptrCol, std::map<indexType, std::vector<prec>> &vReacs) {
-  this->material->getElementFormulation(ptrCol)->getElementsLocalNodalReactions(
+  this->m_material->getElementFormulation(ptrCol)->getElementsLocalNodalReactions(
       ptrCol, this, vReacs);
 }
 
@@ -95,9 +77,7 @@ void GenericFiniteElement::getSolution(ptrCol &pointers,
 auto GenericFiniteElement::getSolution(ptrCol &pointers,
                                        std::vector<DegreeOfFreedom *> &Dofs) -> Types::VectorX<prec> {
 
-  auto solstate = pointers.getSolutionState();
-
-  return solstate->getSolution(Dofs);
+  return pointers.getSolutionState()->getSolution(Dofs);
 }
 
 void GenericFiniteElement::getVelocity(ptrCol &pointers,
@@ -118,21 +98,19 @@ void GenericFiniteElement::getAcceleration(ptrCol &pointers,
   solution = solstate->getAcceleration(Dofs);
 }
 
-void GenericFiniteElement::setParaviewCellData(ptrCol &pointers,
-                                               vtkPlotInterface &catalyst) {}
 
 auto GenericFiniteElement::getNumberOfIntegrationPoints(PointerCollection& pointers) -> indexType {
-  return this->material->getElementFormulation(pointers)->getNumberOfIntergrationPoints(pointers, this);
+  return this->m_material->getElementFormulation(pointers)->getNumberOfIntergrationPoints(pointers, this);
 }
 
 auto GenericFiniteElement::getElementHistoryDataStructure(PointerCollection& pointers)
 -> const HistoryDataStructure & {
-  return this->material->getElementFormulation(pointers)->getHistoryDataStructure();
+  return this->m_material->getElementFormulation(pointers)->getHistoryDataStructure();
 }
 
 auto GenericFiniteElement::getMaterialHistoryDataStructure(PointerCollection& pointers)
 -> const HistoryDataStructure & {
-  return this->material->getMaterialFormulation(pointers)->getHistoryDataStructure(pointers);
+  return this->m_material->getMaterialFormulation(pointers)->getHistoryDataStructure(pointers);
 }
 
 auto GenericFiniteElement::getHistoryDataSetUp(PointerCollection& pointers) -> HistoryDataSetup
@@ -143,7 +121,7 @@ auto GenericFiniteElement::getHistoryDataSetUp(PointerCollection& pointers) -> H
       this->getNumberOfIntegrationPoints(pointers);
   HistoryDataSetup setup;
   setup.setNumberOfIntegrationPoints(numGp);
-  setup.setElementId(this->id);
+  setup.setElementId(this->m_id);
   setup.setNHistPerIntPointElement(elemHistStruct.getNumberOfUpdateValues(),
                                    elemHistStruct.getNumberOfConstValues());
   setup.setNHistPerIntPointMaterial(matHistStrcut.getNumberOfUpdateValues(),
@@ -153,7 +131,7 @@ auto GenericFiniteElement::getHistoryDataSetUp(PointerCollection& pointers) -> H
 
 auto GenericFiniteElement::getHistoryDataIterator(ptrCol &pointers)
     -> HistoryDataIterator {
-  auto histIt = pointers.getSolutionState()->getHistoryData(this->id);
+  auto histIt = pointers.getSolutionState()->getHistoryData(this->m_id);
   histIt.setElementStructure(this->getElementHistoryDataStructure(pointers));
   histIt.setMaterialStructure(this->getMaterialHistoryDataStructure(pointers));
   return histIt;
@@ -161,35 +139,72 @@ auto GenericFiniteElement::getHistoryDataIterator(ptrCol &pointers)
 
 void GenericFiniteElement::updateRVEHistory(PointerCollection &pointers)
 {
-  this->material->getElementFormulation(pointers)->updateRVEHistory(pointers,
+  this->m_material->getElementFormulation(pointers)->updateRVEHistory(pointers,
                                                                        this);
 }
 
-void GenericFiniteElement::toParaviewAdapter(
-    GenericFiniteElement::ptrCol &pointers, vtkPlotInterface &catalyst,
-    ParaviewSwitch ToDo) {
-  this->material->getElementFormulation(pointers)->toParaviewAdaper(pointers, this,
-                                                            catalyst, ToDo);
-}
 
 auto GenericFiniteElement::getVertex(GenericFiniteElement::ptrCol &pointers,
                                      indexType localNumber)
-    -> Geometry::Vertex & {
+    -> Geometry::VertexData & {
 
   throw std::runtime_error("Method getVertex not implemented to the element");
-  return pointers.getGeometryData()->getVertex(1);
+  return pointers.getGeometryData()->getVertexData(1);
 }
 
 auto GenericFiniteElement::getEdge(ptrCol &pointers, indexType localNumber)
-    -> Geometry::Edges & {
+    -> Geometry::EdgesData & {
   throw std::runtime_error("Method getEdge not implemented for Element");
-  return pointers.getGeometryData()->getEdge(1);
+  return pointers.getGeometryData()->getEdgeData(1);
 };
 
 auto GenericFiniteElement::getIntegrationPoints(ptrCol &pointers)
     -> IntegrationPoints {
-  auto temp = HierAMuS::FiniteElement::GenericFiniteElement::ptrCol::getIntegrationPoints(this->id);
-  return temp;
+  return IntegrationPointsManagement::getIntegrationsPoints(this->m_id);
+}
+
+auto GenericFiniteElement::getMaterialFormulation(PointerCollection &pointers)
+    -> std::shared_ptr<HierAMuS::Materials::GenericMaterialFormulation> {
+  return this->m_material->getMaterialFormulation(pointers);
+}
+auto GenericFiniteElement::getMaterialFormulation(PointerCollection &pointers,
+                                                  IntegrationPoint &ip)
+    -> std::shared_ptr<HierAMuS::Materials::GenericMaterialFormulation> {
+  return this->m_material->getMaterialFormulation(pointers);
+};
+auto GenericFiniteElement::getMaterialId() -> indexType {
+  return this->m_material->getNumber();
+}
+
+void GenericFiniteElement::request_element_data_field(
+    PointerCollection &pointers, indexType fieldId, indexType rows,
+    indexType cols) {
+  pointers.getSolutionState()->request_element_data_field(this->m_id, fieldId,
+                                                          rows, cols);
+}
+
+auto GenericFiniteElement::get_element_data_field(PointerCollection &pointers,
+                                                  indexType fieldId)
+    -> Types::MatrixXX<prec> & {
+  return pointers.getSolutionState()->get_element_data_field(m_id, fieldId);
+}
+
+void GenericFiniteElement::set_element_data_field(PointerCollection &pointers,
+                                                  indexType fieldId,
+                                                  Types::MatrixXX<prec> &data) {
+  pointers.getSolutionState()->set_element_data_field(m_id, fieldId, data);
+}
+
+auto GenericFiniteElement::getIncrementalSolution(
+    ptrCol &pointers, std::vector<DegreeOfFreedom *> &Dofs)
+    -> Types::VectorX<prec> {
+  return pointers.getSolutionState()->getIncrementalSolution(Dofs);
+}
+
+auto GenericFiniteElement::getNewtonSolution(
+    ptrCol &pointers, std::vector<DegreeOfFreedom *> &Dofs)
+    -> Types::VectorX<prec> {
+  return pointers.getSolutionState()->getNewtonSolution(Dofs);
 }
 
 } /* namespace HierAMuS */

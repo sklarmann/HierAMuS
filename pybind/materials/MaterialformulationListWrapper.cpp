@@ -4,6 +4,8 @@
 
 #include "MaterialformulationListWrapper.h"
 #include "pointercollection/pointercollection.h"
+#include "control/ParameterList.h"
+#include "materials/GenericMaterialFormulation.h"
 namespace HierAMuS {
 namespace Materials {
 

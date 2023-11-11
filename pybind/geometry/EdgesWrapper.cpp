@@ -3,7 +3,7 @@
 // SPDX-License-Identifier: BSD-3-Clause
 
 #include "EdgesWrapper.h"
-#include "geometry/Edges.h"
+#include "geometry/Edges/EdgesData.h"
 #include "geometry/GeometryData.h"
 #include <pybind11/pybind11.h>
 #include <pybind11/stl.h>
@@ -14,11 +14,11 @@ namespace py = pybind11;
 void HierAMuS::Geometry::EdgesWrapper::registerFunctions() {
   //this->temp;
   this->temp//.def(py::init<>())
-      .def("setVerts", &HierAMuS::Geometry::Edges::setVerts)
+      .def("setVerts", &HierAMuS::Geometry::EdgesData::setVerts)
       //.def("getVerts", py::overload_cast<std::vector<indexType>&>(&HierAMuS::Geometry::LinearEdge::getVerts))
       //.def("getVerts",py::overload_cast<HierAMuS::PointerCollection&,std::vector<HierAMuS::Geometry::Base*>&>(&HierAMuS::Geometry::LinearEdge::getVerts))
 
-      .def("getVerts", py::overload_cast<std::vector<indexType> &>(
-                           &HierAMuS::Geometry::Edges::getVerts));
+      .def("getVerts", py::overload_cast<>(
+                           &HierAMuS::Geometry::EdgesData::getVertexNumbers));
 	
 }

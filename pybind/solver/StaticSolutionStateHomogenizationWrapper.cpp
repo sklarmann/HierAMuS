@@ -5,7 +5,6 @@
 #include "StaticSolutionStateHomogenizationWrapper.h"
 #include "pointercollection/pointercollection.h"
 #include "control/ParameterList.h"
-#include "equations/DegreeOfFreedom.h"
 #include "types/MatrixTypes.h"
 #include "pybind11/stl.h"
 #include "pybind11/eigen.h"

@@ -4,7 +4,7 @@
 
 cmake_minimum_required (VERSION 3.16)
 project (HierAMuS
-VERSION 0.1 )
+VERSION 0.2 )
 
 
 ############################################################################################
@@ -126,7 +126,7 @@ else()
     SET(CMAKE_SKIP_BUILD_RPATH  FALSE)
     SET(CMAKE_BUILD_WITH_INSTALL_RPATH TRUE)
     SET(CMAKE_INSTALL_RPATH "\${ORIGIN}")
-    SET(CMAKE_CXX_FLAGS  "${CMAKE_CXX_FLAGS}  --std=c++17 -Wunused -Wuninitialized")
+    SET(CMAKE_CXX_FLAGS  "${CMAKE_CXX_FLAGS} -Wunused -Wuninitialized")
     
     #set(CMAKE_CXX_FLAGS_DEBUG "${CMAKE_CXX_FLAGS_DEBUG} -fsanitize=undefined,memory -fsanitize-memory-track-origins=2 -fno-omit-frame-pointer -fsanitize-blacklist=${CMAKE_CURRENT_SOURCE_DIR}/blacklist.txt -g -O0")
     set(CMAKE_CXX_FLAGS_DEBUG "${CMAKE_CXX_FLAGS_DEBUG} -g -O0")
@@ -152,7 +152,10 @@ endif()
 #
 set(BUILD_FEMSOURCE ON CACHE BOOL "Link the simulator with Catalyst and enable postprocessing")
 if(BUILD_FEMSOURCE)
+    add_subdirectory(HierAMuSEquationsSource)
+    add_subdirectory(HierAMuSLoadSource)
     add_subdirectory(HierAMuSPlotSource)
+    add_subdirectory(HierAMuSGeometrySource)
     add_subdirectory(HierAMuSFEMSource)
 endif()
 

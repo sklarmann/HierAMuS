@@ -5,26 +5,25 @@
 #pragma once
 
 #include "datatypes.h"
-
-#include "pointercollection/pointercollection.h"
-
 #include <memory>
 
 namespace HierAMuS {
 
-  class vtkPlotInterface;
+class vtkPlotInterface;
+class PointerCollection;
 
-  class PlotControl {
-    public:
-    PlotControl();
-    ~PlotControl(){};
+class PlotControl {
+public:
+  PlotControl();
+  ~PlotControl(){};
 
-    void initialize(PointerCollection &pointers);
-    void initializeMesh(PointerCollection &pointers);
-    void timeUpdate(prec time);
-    void toFile(PointerCollection &pointers);
-    private:
-    std::shared_ptr<vtkPlotInterface> m_plot;
-    bool m_init, m_initMesh;
-  };
-}
+  void initialize(PointerCollection &pointers);
+  void initializeMesh(PointerCollection &pointers);
+  void timeUpdate(prec time);
+  void toFile(PointerCollection &pointers);
+
+private:
+  std::shared_ptr<vtkPlotInterface> m_plot;
+  bool m_init, m_initMesh;
+};
+} // namespace HierAMuS

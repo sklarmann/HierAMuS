@@ -4,14 +4,16 @@
 
 #include <pointercollection/pointercollection.h>
 
+#include "finiteElements/GenericFiniteElement.h"
+
+
 #include <control/ParameterList.h>
-#include <loads/PropfunctionHandler.h>
+#include "PropfunctionHandler.h"
 
 #include <solver/GenericSolutionState.h>
 
-#include <equations/DegreeOfFreedom.h>
-#include <equations/DofStatus.h>
-#include <equations/EquationHandler.h>
+//Equations
+#include "EquationHandler.h"
 
 #include <solver/EigenPardisoLDLT.h>
 #include <solver/EigenPardisoLLT.h>
@@ -58,6 +60,23 @@ auto GenericSolutionState::getCopy() -> std::shared_ptr<GenericSolutionState> {
   std::shared_ptr<GenericSolutionState> tor =
       std::make_shared<GenericSolutionState>(*this);
   return tor;
+}
+
+void GenericSolutionState::request_element_data_field(indexType elementId,
+                                                      indexType fieldId,
+                                                      indexType rows,
+                                                      indexType cols) {
+  m_ElementData.request_field(elementId, fieldId, rows, cols);
+}
+
+auto GenericSolutionState::get_element_data_field(indexType elementId, indexType fieldId)
+    -> Types::MatrixXX<prec> & {
+  return m_ElementData.get_field(elementId, fieldId);
+}
+
+void GenericSolutionState::set_element_data_field(indexType elementId, indexType fieldId,
+                                     Types::MatrixXX<prec> &data) {
+  m_ElementData.set_field(elementId, fieldId, data);
 }
 
 void GenericSolutionState::setInitialValues(indexType numberOfEquations,
@@ -123,7 +142,7 @@ void GenericSolutionState::setProps(
 
 prec GenericSolutionState::getEigenVectorComp(indexType eqId, indexType evId) {
   if (eqId >= 0) {
-    if (this->eigenVectors.size() > evId) {
+    if (static_cast<indexType>(this->eigenVectors.size()) > evId) {
       return this->eigenVectors[evId][eqId];
     }
   }
@@ -148,8 +167,8 @@ void GenericSolutionState::setupHistoryData(PointerCollection &pointers) {
   auto elemList = pointers.getElementList();
   indexType numElem = elemList->getNumberOfElements();
   m_HistoryData.setNumberOfElements(numElem);
-  for (size_t i = 0; i < numElem; i++) {
-    auto elem = elemList->getElement(i);
+  for (indexType i = 0; i < numElem; i++) {
+    auto elem = elemList->getElement(pointers, i);
     auto setupHist = elem->getHistoryDataSetUp(pointers);
     m_HistoryData.addHistoryDataElement(setupHist);
   }
@@ -382,7 +401,7 @@ void GenericSolutionState::updateRVEHistory(PointerCollection &pointers)
 #pragma omp parallel for               \
     schedule(dynamic)
     for (indexType i = 0; i < numberOfElements; ++i) {
-      elem = elemList->getElement(i);
+      elem = elemList->getElement(pointers, i);
       elem->updateRVEHistory(pointers);
     }
   }
@@ -393,5 +412,30 @@ void GenericSolutionState::nextSolutionStep() {
   m_HistoryData.update();
 
 };
+
+void ElementDataFields::request_field(indexType elementId, indexType fieldId,
+                                      indexType rows, indexType cols) {
+  indexType numField = m_data[elementId].size();
+  if (fieldId + 1 > numField)
+    m_data[elementId].resize(fieldId + 1);
+  m_data[elementId][fieldId].resize(rows, cols);
+  m_data[elementId][fieldId].setZero();
+}
+
+auto ElementDataFields::get_field(indexType elementId, indexType fieldId)
+    -> Types::MatrixXX<prec> & {
+  indexType numfields = m_data[elementId].size();
+  if (fieldId + 1 > numfields)
+    throw std::runtime_error("Error, requested field does not exist");
+  return m_data[elementId][fieldId];
+}
+
+void ElementDataFields::set_field(indexType elementId, indexType fieldId,
+                                  Types::MatrixXX<prec> &data) {
+  indexType numFields = m_data[elementId].size();
+  if (fieldId + 1 > numFields)
+    m_data[elementId].resize(fieldId + 1);
+  m_data[elementId][fieldId] = data;
+}
 
 } /* namespace HierAMuS */

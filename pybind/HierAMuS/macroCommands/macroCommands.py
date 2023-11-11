@@ -7,6 +7,7 @@ from HierAMuS.macroCommands.homogenizationCommands import homogenizationCommands
 
 from timeit import default_timer as timer
 from string import Template
+import math
 
 #from HierAMuS.FEMPy import FEMPy
 #import HierAMuS
@@ -37,18 +38,10 @@ class macroCommands:
         props.print(self.program.ptr)
 
     def sparseSetUp(self):
-        # elemList = self.program.ptr.getElementList()
-        # numElems = elemList.getNumberOfElements()
-        # self.program.ptr.getEquationHandler().updateEquations()
-        # self.program.ptr.getEquationHandler().initSolutionState()
-
-        # for i in range(numElems):
-        #     elemList.getElement(i).setUpSparseMatrix(self.program.ptr)
-
         start = timer()
         self.program.ptr.getSolutionState().setSparseMatrix(self.program.ptr)
         end = timer()
-        self.program.ptr.getEquationHandler().print(self.program.ptr)
+        #self.program.ptr.getEquationHandler().print(self.program.ptr)
         
         self.program.outputLine(self.program.BasicLog(),self.program.BasicLog(),NameTimeString("Setting up Sparse Matrix took:",end-start))
         
@@ -75,7 +68,7 @@ class macroCommands:
         #self.program.propFunctionList.append(function)
         a = HierAMuSPyFEM.Function()
         a.setLambda(function)
-        self.program.ptr.getSolutionState().getProps().addFunction(self.program.ptr,number,a,tmin,tmax)
+        self.program.ptr.getSolutionState().getProps().addFunction(number,a,tmin,tmax)
 
     def setDt(self,dt):
         self.program.ptr.getSolutionState().getProps().set_dt(dt)
@@ -107,7 +100,7 @@ class macroCommands:
         self.program.outputLine(self.program.BasicLog(),self.program.BasicLog(),NameTimeString("Solution of equation system took:",end-start))
         energy0 = soltstate.energyNorm()
         residual0 = soltstate.residual()
-        self.program.outputLine(self.program.BasicLog(),self.program.BasicLog(),NameFloatString("Initial Residual norm was:",residual0))
+        self.program.outputLine(self.program.BasicLog(),self.program.BasicLog(),NameFloatString("Initial Residual was:",residual0))
 
         #self.program.ptr.solution.solve()
 
@@ -117,6 +110,7 @@ class macroCommands:
         self.program.outputLine(self.program.BasicLog(),self.program.BasicLog(),"Starting newton iterations")
 
         solutionState = self.program.ptr.getSolutionState()
+        numEq = self.program.ptr.getEquationHandler().getNumberOfActiveEquations()
         start = timer()
         self.assembleSolve()
         end = timer()
@@ -128,6 +122,11 @@ class macroCommands:
         residual0 = solutionState.residual()
         if residual0 == 0:
             residual0 = 1
+
+        if self.program.maxEnergy <= abs(energy0):
+            self.program.maxEnergy = energy0
+        if self.program.maxResidual <= abs(residual0):
+            self.program.maxResidual = residual0
 
         energyNom = 1
         residualNorm = 1
@@ -146,11 +145,11 @@ class macroCommands:
             end = timer()
             energy = solutionState.energyNorm()
             residual = solutionState.residual()
-            residualNorm = residual/residual0
-            energyNom = energy/energy0
+            residualNorm = residual/self.program.maxResidual/(numEq)
+            energyNom = energy/self.program.maxEnergy/(numEq)
 
             
-            st = "{:15}{:6d}/{:6d}  {:9}:{:8.4f} sec".format("Iteration",iteration,maxIteration,"took",end-start)
+            st = "{:15}{:6d}/{:6d}  {:<9}:{:8.4f} sec".format("Iteration",iteration,maxIteration,"took",end-start)
             self.program.outputLine(self.program.BasicLog(),self.program.BasicLog(),st)
             self.program.outputLine(self.program.BasicLog(),self.program.BasicLog(),NameFloatString("Current residual:",residual))
             self.program.outputLine(self.program.BasicLog(),self.program.BasicLog(),NameFloatString("Current energy::",energy))
@@ -166,7 +165,7 @@ class macroCommands:
 
         sol = []
         for nn in nodes:
-            dofs = nn.getDegreesOfFreedom(self.program.ptr)
+            dofs = nn.getDegreesOfFreedom()
             tsol = solState.getSolution(dofs)
             for ss in tsol:
                 sol.append(ss)
@@ -179,7 +178,7 @@ class macroCommands:
 
     def printSpMat(self):
         solState = self.program.ptr.getSolutionState()
-        solState.printSpMat()
+        solState.printSpMat(self.program.ptr)
         
     def setStrains(self,strains):
         sol = self.program.ptr.getSolutionState()

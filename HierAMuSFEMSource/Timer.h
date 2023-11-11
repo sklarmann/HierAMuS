@@ -12,6 +12,7 @@
 
 namespace HierAMuS {
 
+class OutputHandler;
 typedef std::chrono::seconds sec;
 typedef std::chrono::milliseconds ms;
 
@@ -93,24 +94,7 @@ public:
     }
     return out;
   }
-  friend OutputHandler &operator<<(OutputHandler &out, Timer<timef> &self) {
-    if (self.started) {
-      if (self.running) {
-        std::chrono::steady_clock::time_point temp =
-            std::chrono::steady_clock::now();
-        std::chrono::duration<double> time_diff =
-            std::chrono::duration_cast<std::chrono::duration<double>>(temp -
-                                                                      self.t1);
-        out << time_diff.count() << " seconds";
-      } else {
-        std::chrono::duration<double> time_diff =
-            std::chrono::duration_cast<std::chrono::duration<double>>(self.t2 -
-                                                                      self.t1);
-        out << time_diff.count() << " seconds";
-      }
-    }
-    return out;
-  }
+
 
 private:
   std::chrono::steady_clock::time_point t1, t2;

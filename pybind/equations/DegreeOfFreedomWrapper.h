@@ -7,7 +7,7 @@
 
 namespace py = pybind11;
 
-#include "equations/DegreeOfFreedom.h"
+#include "DegreeOfFreedom.h"
 
 namespace HierAMuS {
 //class PyEquationHandler : public EquationHandler {

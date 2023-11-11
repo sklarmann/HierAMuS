@@ -7,13 +7,13 @@
 
 namespace py = pybind11;
 
-#include "geometry/LinearEdge.h"
+#include "geometry/Edges/LinearEdgeData.h"
 
 namespace HierAMuS {
 namespace Geometry {
-class PyLinearEdge : public LinearEdge {
+class PyLinearEdge : public LinearEdgeData {
 public:
-  using LinearEdge::LinearEdge;
+  using LinearEdgeData::LinearEdgeData;
 
   // void renew() {
   //  PYBIND11_OVERRIDE(void, HierAMuS::PointerCollection, renew);
@@ -23,11 +23,12 @@ public:
 class LinearEdgeWrapper {
 public:
   LinearEdgeWrapper(py::module &m)
-      : temp(m, "LinearEdge "){};
+      : temp(m, "LinearEdge"){};
   void registerFunctions();
 
 private:
-  typedef py::class_<LinearEdge, PyLinearEdge, Edges, Base, std::shared_ptr<LinearEdge>>
+  typedef py::class_<LinearEdgeData, PyLinearEdge, EdgesData, GeometryBaseData,
+                     std::shared_ptr<LinearEdgeData>>
       pw;
   pw temp;
 };

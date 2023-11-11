@@ -6,9 +6,9 @@
 
 
 
-#include <materials/MaterialList.h>
+#include "materials/MaterialList.h"
 
-#include <materials/Material.h>
+#include "materials/Material.h"
 
 namespace HierAMuS::Materials {
 

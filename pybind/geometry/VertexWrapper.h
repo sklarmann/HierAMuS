@@ -7,14 +7,14 @@
 
 namespace py = pybind11;
 
-#include "geometry/Vertex.h"
-#include "geometry/Base.h"
+#include "geometry/VertexData.h"
+#include "geometry/GeometryBaseData.h"
 
 namespace HierAMuS {
 namespace Geometry {
-class PyVertex : public Vertex {
+class PyVertex : public VertexData {
 public:
-  using Vertex::Vertex;
+  using VertexData::VertexData;
 
   // void renew() {
   //  PYBIND11_OVERRIDE(void, HierAMuS::PointerCollection, renew);
@@ -28,7 +28,8 @@ public:
   void registerFunctions();
 
 private:
-  typedef py::class_<Vertex, PyVertex, Base, std::shared_ptr<Vertex>>
+  typedef py::class_<VertexData, PyVertex, GeometryBaseData,
+                     std::shared_ptr<VertexData>>
       pw;
   pw temp;
 };

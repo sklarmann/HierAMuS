@@ -6,30 +6,31 @@
 
 #pragma once
 
-#include "geometry/Base.h"
-#include "geometry/GeometryTypes.h"
-#include <forwarddeclaration.h>
 
-
-#include <elementFormulations/GenericElementFormulation.h>
-#include <types/MatrixTypes.h>
+#include "elementFormulations/GenericElementFormulationInterface.h"
+#include "types/MatrixTypes.h"
 
 #include <Eigen/Dense>
 
+namespace HierAMuS::Geometry {
+struct H1Shapes;
+}
+
 namespace HierAMuS::Elementformulations {
 
-class EL206_Plate : public GenericElementFormulation {
+class EL206_Plate : public GenericElementFormulationInterface<FiniteElement::Face> {
 public:
   explicit EL206_Plate(PointerCollection *ptrCol);
   ~EL206_Plate() override;
   void readData(PointerCollection &pointers, ParameterList &list) override;
-  void setDegreesOfFreedom(PointerCollection& pointers, FiniteElement::GenericFiniteElement *elem) override;
-  void AdditionalOperations(PointerCollection& pointers, FiniteElement::GenericFiniteElement *elem) override;
+  void setDegreesOfFreedom(PointerCollection &pointers,
+                           FiniteElement::Face &elem) override;
+  void AdditionalOperations(PointerCollection& pointers, FiniteElement::Face &elem) override;
   auto getDofs(PointerCollection& pointers, FiniteElement::GenericFiniteElement *elem)
   -> std::vector<DegreeOfFreedom *> override;
   void setTangentResidual(
     PointerCollection& pointers,
-    FiniteElement::GenericFiniteElement *elem,
+    FiniteElement::Face &elem,
     Eigen::Matrix<prec, Eigen::Dynamic, Eigen::Dynamic> &stiffness,
     Eigen::Matrix<prec, Eigen::Dynamic, 1> &residual, std::vector<DegreeOfFreedom *> &Dofs) override;
 
@@ -39,7 +40,7 @@ public:
 
   // plot
   void toParaviewAdaper(PointerCollection &pointers,
-                                FiniteElement::GenericFiniteElement *elem,
+                                FiniteElement::Face &elem,
                                 vtkPlotInterface &paraviewAdapter,
                                 ParaviewSwitch control) override;
 
@@ -58,13 +59,13 @@ private:
 
   void setTangentResidualDispFormulation(
     PointerCollection& pointers,
-    FiniteElement::GenericFiniteElement *elem,
+    FiniteElement::Face *elem,
     Eigen::Matrix<prec, Eigen::Dynamic, Eigen::Dynamic> &stiffness,
     Eigen::Matrix<prec, Eigen::Dynamic, 1> &residual, std::vector<DegreeOfFreedom *> &Dofs);
 
   void setTangentResidualHuWashizuFormulation(
     PointerCollection& pointers,
-    FiniteElement::GenericFiniteElement *elem,
+    FiniteElement::Face *elem,
     Eigen::Matrix<prec, Eigen::Dynamic, Eigen::Dynamic> &stiffness,
     Eigen::Matrix<prec, Eigen::Dynamic, 1> &residual, std::vector<DegreeOfFreedom *> &Dofs);
 

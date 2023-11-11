@@ -5,6 +5,7 @@
 
 
 #include "ParameterList.h"
+#include "OutputHandler.h"
 
 #include <utility>
 namespace HierAMuS {
@@ -41,8 +42,7 @@ Types::MatrixXX<indexType> ParameterList::getIndexMatrix(const std::string& name
   cols = initMatrix.cols();
   rows = initMatrix.rows();
 
-  Types::MatrixXX<indexType> returnMatrix;
-  returnMatrix.resize(rows,cols);
+  Types::MatrixXX<indexType> returnMatrix(rows,cols);
   for(auto i=0;i<rows;++i){
     for(auto j=0;j<cols;++j){
       returnMatrix(i,j) = static_cast<indexType>(initMatrix(i,j));
@@ -53,8 +53,7 @@ Types::MatrixXX<indexType> ParameterList::getIndexMatrix(const std::string& name
   return returnMatrix;
 }
 void ParameterList::add(const std::string &name, prec value) {
-  Types::MatrixXX<prec> mat;
-  mat.resize(1,1);
+  Types::MatrixXX<prec> mat(1,1);
   mat(0,0) = value;
   this->data[name] = mat;
 
@@ -63,13 +62,7 @@ void ParameterList::add(const std::string &name, Types::MatrixXX<prec> value) {
   this->data[name] = std::move(value);
 
 }
-void ParameterList::outputRemainingValues(OutputHandler &Log) {
 
-  for(auto & it : this->data){
-    Log.all() << it.first << "=" << it.second;
-  }
-
-}
 bool ParameterList::empty() {
   return this->data.empty();
 }

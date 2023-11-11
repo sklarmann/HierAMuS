@@ -11,9 +11,11 @@ namespace HierAMuS {
 class HistoryDataStructure {
 
 public:
+  //HistoryDataStructure() : m_numberOfConstValues(0), m_numberOfUpdateValues(0) {};
   HistoryDataStructure(
     std::vector<std::pair<indexType, indexType>> constHistory,
     std::vector<std::pair<indexType, indexType>> updateHistory);
+
   ~HistoryDataStructure() = default;
 
   auto getNumberOfUpdateValues() const -> indexType;
@@ -25,6 +27,9 @@ public:
       -> const std::vector<std::pair<indexType, indexType>> &;
   
 private:
+  void update_number_of_update_values();
+  void update_number_of_const_values();
+
   std::vector<std::pair<indexType, indexType>> m_constHistory, m_updateHistory;
   indexType m_numberOfConstValues;
   indexType m_numberOfUpdateValues;

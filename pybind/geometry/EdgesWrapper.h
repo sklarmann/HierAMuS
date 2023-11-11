@@ -7,13 +7,13 @@
 
 namespace py = pybind11;
 
-#include "geometry/Edges.h"
+#include "geometry/Edges/EdgesData.h"
 
 namespace HierAMuS {
 namespace Geometry {
-class PyEdges : public Edges {
+class PyEdges : public EdgesData {
 public:
-  using Edges::Edges;
+  using EdgesData::EdgesData;
 
   // void renew() {
   //  PYBIND11_OVERRIDE(void, HierAMuS::PointerCollection, renew);
@@ -27,7 +27,7 @@ public:
   void registerFunctions();
 
 private:
-  typedef py::class_<Edges, PyEdges, Base, std::shared_ptr<Edges>>
+  typedef py::class_<EdgesData, PyEdges, GeometryBaseData, std::shared_ptr<EdgesData>>
       pw;
   pw temp;
 };

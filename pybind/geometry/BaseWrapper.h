@@ -7,13 +7,13 @@
 
 namespace py = pybind11;
 
-#include "geometry/Base.h"
+#include "geometry/GeometryBaseData.h"
 
 namespace HierAMuS {
 namespace Geometry {
-class PyBase : public Base {
+class PyGeometryBaseData : public GeometryBaseData {
 public:
-  using Base::Base;
+  using GeometryBaseData::GeometryBaseData;
 
   // void renew() {
   //  PYBIND11_OVERRIDE(void, HierAMuS::PointerCollection, renew);
@@ -23,11 +23,12 @@ public:
 class BaseWrapper {
 public:
   BaseWrapper(py::module &m)
-      : temp(m, "Base"){};
+      : temp(m, "GeometryBaseData"){};
   void registerFunctions();
 
 private:
-  typedef py::class_<Base, PyBase, std::shared_ptr<Base>>
+  typedef py::class_<GeometryBaseData, PyGeometryBaseData,
+                     std::shared_ptr<GeometryBaseData>>
       pw;
   pw temp;
 };

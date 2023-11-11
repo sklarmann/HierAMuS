@@ -5,20 +5,13 @@
 set(SOURCEFILES)
 set(HEADRS ${CMAKE_CURRENT_SOURCE_DIR}/HelperFunctions.h)
 
-add_subdirectory(Base)
 add_subdirectory(control)
-add_subdirectory(controlProgram)
 add_subdirectory(elementFormulations)
-add_subdirectory(equations)
-add_subdirectory(filehandling)
 add_subdirectory(finiteElements)
-add_subdirectory(geometry)
-add_subdirectory(loads)
 add_subdirectory(materials)
 add_subdirectory(math)
 add_subdirectory(plot)
 add_subdirectory(pointercollection)
-add_subdirectory(shapefunctions)
 add_subdirectory(solver)
 #add_subdirectory(stringoperations)
 
@@ -26,13 +19,13 @@ add_subdirectory(solver)
 #
 if(WIN32)
 	set(HELPSOURCE ${SOURCEFILES} ${HEADERS})
-	add_library(HierAMuS_FEM SHARED ${HELPSOURCE})
+	add_library(HierAMuS_FEM SHARED ${HELPSOURCE} ${CMAKE_CURRENT_SOURCE_DIR}/../eigen.natvis)
 else()
-	add_library(HierAMuS_FEM SHARED ${SOURCEFILES})
+	add_library(HierAMuS_FEM SHARED ${SOURCEFILES} ${CMAKE_CURRENT_SOURCE_DIR}/../eigen.natvis)
 endif()
 #
 
-target_link_libraries(HierAMuS_FEM PUBLIC Eigen3::Eigen HierAMuS_Plot)
+target_link_libraries(HierAMuS_FEM PUBLIC Eigen3::Eigen HierAMuS_Plot HierAMuS_Equations HierAMuS_Loads HierAMuS_Geometry)
 
 if(USE_OPENMP)
   target_link_libraries(HierAMuS_FEM PUBLIC OpenMP::OpenMP_CXX)
@@ -81,70 +74,70 @@ set(CPPYHEADERS ${HEADERS} PARENT_SCOPE)
 set(SOURCEFILES ${SOURCEFILES} PARENT_SCOPE)
 
 
-install(TARGETS HierAMuS_FEM EXPORT HierAMuS_FEMTargets
-  LIBRARY DESTINATION .
-  ARCHIVE DESTINATION .
-  RUNTIME DESTINATION .
-  INCLUDES DESTINATION HierAMuS_FEM/include
-)
+# install(TARGETS HierAMuS_FEM EXPORT HierAMuS_FEMTargets
+#   LIBRARY DESTINATION .
+#   ARCHIVE DESTINATION .
+#   RUNTIME DESTINATION .
+#   INCLUDES DESTINATION HierAMuS_FEM/include
+# )
 
-install(DIRECTORY "${CMAKE_CURRENT_SOURCE_DIR}/" # source directory
-        DESTINATION "HierAMuS_FEM/include" # target directory
-        FILES_MATCHING # install only matched files
-        PATTERN "*.h" # select header files
-        )
-install(DIRECTORY "${CMAKE_CURRENT_SOURCE_DIR}/../types" # source directory
-        DESTINATION "HierAMuS_FEM/include/" # target directory
-        FILES_MATCHING # install only matched files
-        PATTERN "*.h" # select header files
-        )
+# install(DIRECTORY "${CMAKE_CURRENT_SOURCE_DIR}/" # source directory
+#         DESTINATION "HierAMuS_FEM/include" # target directory
+#         FILES_MATCHING # install only matched files
+#         PATTERN "*.h" # select header files
+#         )
+# install(DIRECTORY "${CMAKE_CURRENT_SOURCE_DIR}/../types" # source directory
+#         DESTINATION "HierAMuS_FEM/include/" # target directory
+#         FILES_MATCHING # install only matched files
+#         PATTERN "*.h" # select header files
+#         )
 
-install(
-  FILES
-        ${CMAKE_CURRENT_SOURCE_DIR}/../datatypes.h
+# install(
+#   FILES
+#         ${CMAKE_CURRENT_SOURCE_DIR}/../datatypes.h
 
-#    #"${CMAKE_CURRENT_BINARY_DIR}/testlib_export.h"
-  DESTINATION
-    HierAMuS_FEM/include
-#  COMPONENT
-#    Devel
-)
+# #    #"${CMAKE_CURRENT_BINARY_DIR}/testlib_export.h"
+#   DESTINATION
+#     HierAMuS_FEM/include
+# #  COMPONENT
+# #    Devel
+# )
 
 
-include(CMakePackageConfigHelpers)
-write_basic_package_version_file(
-  "${CMAKE_CURRENT_BINARY_DIR}/HierAMuS_FEM/HierAMuS_FEMConfigVersion.cmake"
-  VERSION ${VERSION}
-  COMPATIBILITY AnyNewerVersion
-)
+# include(CMakePackageConfigHelpers)
+# write_basic_package_version_file(
+#   "${CMAKE_CURRENT_BINARY_DIR}/HierAMuS_FEM/HierAMuS_FEMConfigVersion.cmake"
+#   VERSION ${VERSION}
+#   COMPATIBILITY AnyNewerVersion
+# )
 
-export(EXPORT HierAMuS_FEMTargets
-  FILE "${CMAKE_CURRENT_BINARY_DIR}/HierAMuS_FEM/HierAMuS_FEMTargets.cmake"
-  NAMESPACE CPPFEM::
-)
-configure_file(cmake/HierAMuS_FEMConfig.cmake
-  "${CMAKE_CURRENT_BINARY_DIR}/HierAMuS_FEM/HierAMuS_FEMConfig.cmake"
-  COPYONLY
-)
+# export(EXPORT HierAMuS_FEMTargets
+#   FILE "${CMAKE_CURRENT_BINARY_DIR}/HierAMuS_FEM/HierAMuS_FEMTargets.cmake"
+#   NAMESPACE CPPFEM::
+# )
+# configure_file(cmake/HierAMuS_FEMConfig.cmake
+#   "${CMAKE_CURRENT_BINARY_DIR}/HierAMuS_FEM/HierAMuS_FEMConfig.cmake"
+#   COPYONLY
+# )
 
-set(ConfigPackageLocation lib/cmake/HierAMuS_FEM)
-install(EXPORT HierAMuS_FEMTargets
-  FILE
-    HierAMuS_FEMTargets.cmake
-  NAMESPACE
-    CPPFEM::
-  DESTINATION
-    ${ConfigPackageLocation}
-)
-install(
-  FILES
-    cmake/HierAMuS_FEMConfig.cmake
-    "${CMAKE_CURRENT_BINARY_DIR}/HierAMuS_FEM/HierAMuS_FEMConfigVersion.cmake"
-  DESTINATION
-    ${ConfigPackageLocation}
-  COMPONENT
-    Devel
-)
+# set(ConfigPackageLocation lib/cmake/HierAMuS_FEM)
+# install(EXPORT HierAMuS_FEMTargets
+#   FILE
+#     HierAMuS_FEMTargets.cmake
+#   NAMESPACE
+#     CPPFEM::
+#   DESTINATION
+#     ${ConfigPackageLocation}
+# )
+# install(
+#   FILES
+#     cmake/HierAMuS_FEMConfig.cmake
+#     "${CMAKE_CURRENT_BINARY_DIR}/HierAMuS_FEM/HierAMuS_FEMConfigVersion.cmake"
+#   DESTINATION
+#     ${ConfigPackageLocation}
+#   COMPONENT
+#     Devel
+# )
 
 
 

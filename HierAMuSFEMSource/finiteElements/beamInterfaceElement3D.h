@@ -5,14 +5,10 @@
 #pragma once
 
 #include "datatypes.h"
-#include "equations/Nodetypes.h"
-#include "geometry/BeamInterface3D.h"
 #include "geometry/GeometryTypes.h"
-#include "pointercollection/pointercollection.h"
 #include "shapefunctions/IntegrationsPoints/IntegrationPoints.h"
-#include <forwarddeclaration.h>
 
-#include <finiteElements/GenericFiniteElement.h>
+#include <finiteElements/GenericFiniteElementInterface.h>
 #include <types/MatrixTypes.h>
 
 #include <Eigen/Dense>
@@ -24,17 +20,23 @@ template <class bla> class vtkSmartPointer;
 
 class vtkCell;
 
+namespace HierAMuS {
+class PointerCollection;
+namespace Geometry {
+class BeamInterface3D;
+}
+}
+
 namespace HierAMuS::FiniteElement {
 
-class beamInterfaceElement3D : public FiniteElement::GenericFiniteElement {
+class beamInterfaceElement3D : public FiniteElement::GenericFiniteElementInterface<beamInterfaceElement3D> {
   using ptrCol = PointerCollection;
 
 public:
   beamInterfaceElement3D();
   ~beamInterfaceElement3D() override;
-  auto getElementType() -> Elementtypes override {
-    return Elementtypes::beamInterfaceElement3D;
-  };
+  auto getElementType() -> Elementtypes override;;
+  void set_pointers(PointerCollection &pointers) override;
 
   /**
    * @brief For each face of the cross-section, assigns the corresponding material number.  
@@ -104,7 +106,7 @@ public:
 
   auto getJacobian(PointerCollection &pointers,
                    IntegrationPoint &integrationPoint)
-      -> Types::MatrixXX<prec> override;
+      -> Types::MatrixXX<prec>;
 
   void setVerts(std::vector<indexType> &vertsIn) override;
   void setFaces(const std::vector<indexType> &facesIn) override;
@@ -162,20 +164,20 @@ public:
   // Paraview
   void geometryToParaview(PointerCollection &pointers,
                           vtkPlotInterface &paraviewAdapter, indexType mainMesh,
-                          indexType subMesh) override;
+                          indexType subMesh);
   void computeWeightsParaview(PointerCollection &pointers,
                               vtkPlotInterface &paraviewAdapter,
-                              indexType mainMesh, indexType subMesh) override;
+                              indexType mainMesh, indexType subMesh);
   void H1SolutionToParaview(PointerCollection &pointers,
                             vtkPlotInterface &paraviewAdapter,
                             indexType mainMesh, indexType subMesh,
                             indexType meshId, indexType order,
-                            std::string name) override;
+                            std::string name);
   void projectDataToParaviewVertices(
       PointerCollection &pointers, vtkPlotInterface &paraviewAdapter,
       indexType mainMesh, indexType subMesh, indexType order,
       IntegrationPoint &IntegrationPt, Types::VectorX<prec> &data,
-      indexType numberComponents, std::string name) override;
+      indexType numberComponents, std::string name);
 
 
 

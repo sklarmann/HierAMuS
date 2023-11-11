@@ -12,14 +12,14 @@
 
 namespace py = pybind11;
 
-#include "geometry/Faces.h"
+#include "geometry/Faces/FacesData.h"
 
 
 namespace HierAMuS {
 namespace Geometry {
-class PyFaces : public Faces {
+class PyFaces : public FacesData {
 public:
-  using Faces::Faces;
+  using FacesData::FacesData;
 
   // void renew() {
   //  PYBIND11_OVERRIDE(void, HierAMuS::PointerCollection, renew);
@@ -33,7 +33,7 @@ public:
   void registerFunctions();
 
 private:
-  typedef py::class_<Faces, PyFaces, Base, std::shared_ptr<Faces>>
+  typedef py::class_<FacesData, PyFaces, GeometryBaseData, std::shared_ptr<FacesData>>
       pw;
   pw temp;
 };

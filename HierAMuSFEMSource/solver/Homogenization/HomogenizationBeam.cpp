@@ -7,10 +7,14 @@
 #include "datatypes.h"
 #include "solver/Constraints/GeneralLink.h"
 #include "solver/Homogenization/HomogenizationBeam.h"
+#include "solver/GenericSolutionState.h"
 
-#include "equations/EquationHandler.h"
+//Equations
+#include "EquationHandler.h"
+
 #include "geometry/GeometryData.h"
 #include "geometry/GeometryTypes.h"
+#include "geometry/Faces/FacesData.h"
 
 #include "control/BinaryWrite.h"
 
@@ -57,7 +61,7 @@ void HomogenizationBeam::init(PointerCollection &pointers,
                            Types::Vector3<prec> &normal,
                            Types::Vector3<prec> &point) {
     auto faces =
-        pointers.getGeometryData()->getFacesInPlane(pointers, normal, point);
+        pointers.getGeometryData()->getFacesInPlane(normal, point);
     std::vector<indexType> faceNums;
     indexType nfaces = faces.size();
     faceNums.resize(nfaces);
@@ -81,7 +85,7 @@ void HomogenizationBeam::init(PointerCollection &pointers,
     this->setDisplacementBoundaryConditions2(pointers);
   } else if (bctype == 1) {
     pointers.getGeometryData()->sortReorientFacesPeriodicBC(
-        pointers, this->leftFacesMaster, this->rightFacesSlave);
+        this->leftFacesMaster, this->rightFacesSlave);
     auto &Logger = pointers.getSPDLogger();
     Logger.debug("Arranged master and slave faces for periodic boundary conditions");
     Logger.debug("Master faces: {}", fmt::join(leftFacesMaster, " "));
@@ -97,8 +101,8 @@ void HomogenizationBeam::setDisplacementBoundaryConditions(
   for (const auto &v :
        {std::cref(leftFacesMaster), std::cref(rightFacesSlave)}) {
     for (auto i : v.get()) {
-      auto face = pointers.getGeometryData()->getFace(i);
-      face->setBoundaryCondition(pointers, meshIdDisp, dispOrder,
+      auto face = pointers.getGeometryData()->getFaceData(i);
+      face->setBoundaryCondition(meshIdDisp, dispOrder,
                                  Geometry::ShapeFunctionTypes::H1, dofs, true);
     }
   }
@@ -111,8 +115,8 @@ void HomogenizationBeam::setDisplacementBoundaryConditions2(
   for (const auto &v :
        {std::cref(leftFacesMaster), std::cref(rightFacesSlave)}) {
     for (auto i : v.get()) {
-      auto face = pointers.getGeometryData()->getFace(i);
-      face->setBoundaryCondition(pointers, meshIdDisp, dispOrder,
+      auto face = pointers.getGeometryData()->getFaceData(i);
+      face->setBoundaryCondition(meshIdDisp, dispOrder,
                                  Geometry::ShapeFunctionTypes::H1, dofs, true);
     }
   }
@@ -152,11 +156,11 @@ void HomogenizationBeam::computeAMatrix(
     for (const auto &ff :
          {std::cref(leftFacesMaster), std::cref(rightFacesSlave)}) {
       for (auto fNum : ff.get()) {
-        auto face = pointers.getGeometryData()->getFace(fNum);
+        auto face = pointers.getGeometryData()->getFaceData(fNum);
         indexType numV = face->getNumberOfVerts();
         for (indexType i = 0; i < numV; ++i) {
-          auto vert = face->getVertex(pointers, i);
-          auto Nodes = vert->getNodesOfSet(pointers, meshIdDisp);
+          auto vert = face->getVertex(i);
+          auto Nodes = vert->getNodesOfSet(meshIdDisp);
           auto coor = vert->getCoordinates();
           for (auto node : Nodes) {
             indexType posA = node->getDegreeOfFreedom(0).getEqId();
@@ -180,11 +184,11 @@ void HomogenizationBeam::computeAMatrix(
     for (const auto &ff :
          {std::cref(leftFacesMaster), std::cref(rightFacesSlave)}) {
       for (auto fNum : ff.get()) {
-        auto face = pointers.getGeometryData()->getFace(fNum);
+        auto face = pointers.getGeometryData()->getFaceData(fNum);
         indexType numV = face->getNumberOfVerts();
         for (indexType i = 0; i < numV; ++i) {
-          auto vert = face->getVertex(pointers, i);
-          auto Nodes = vert->getNodesOfSet(pointers, meshIdDisp);
+          auto vert = face->getVertex(i);
+          auto Nodes = vert->getNodesOfSet(meshIdDisp);
           auto coor = vert->getCoordinates();
           for (auto node : Nodes) {
             indexType posA = node->getDegreeOfFreedom(0).getEqId();
@@ -204,18 +208,18 @@ void HomogenizationBeam::computeAMatrix(
     }
 
   } else if (bctype == 1) {
-    for (indexType i = 0; i < leftFacesMaster.size(); ++i) {
-      auto mFace = pointers.getGeometryData()->getFace(leftFacesMaster[i]);
-      auto sFace = pointers.getGeometryData()->getFace(rightFacesSlave[i]);
+    for (indexType i = 0; i < static_cast<indexType>(leftFacesMaster.size()); ++i) {
+      auto mFace = pointers.getGeometryData()->getFaceData(leftFacesMaster[i]);
+      auto sFace = pointers.getGeometryData()->getFaceData(rightFacesSlave[i]);
       indexType numv = mFace->getNumberOfVerts();
       for (indexType lv = 0; lv < numv; ++lv) {
-        auto mVert = mFace->getVertex(pointers, lv);
-        auto sVert = sFace->getVertex(pointers, lv);
+        auto mVert = mFace->getVertex(lv);
+        auto sVert = sFace->getVertex(lv);
         Types::Vector3<prec> dx =
             sVert->getCoordinates() - mVert->getCoordinates();
 
         Types::Vector3<prec> coor = sVert->getCoordinates();
-        auto sNodes = sVert->getNodesOfSet(pointers, meshIdDisp);
+        auto sNodes = sVert->getNodesOfSet(meshIdDisp);
         indexType posA = sNodes[0]->getDegreeOfFreedom(0).getEqId();
         indexType posB = sNodes[0]->getDegreeOfFreedom(1).getEqId();
         indexType posC = sNodes[0]->getDegreeOfFreedom(2).getEqId();
@@ -279,17 +283,17 @@ void HomogenizationBeam::setPeriodicDisplacements(
     Types::Matrix3X<prec> A;
     A.resize(3, strains.rows());
     A.setZero();
-    for (indexType i = 0; i < leftFacesMaster.size(); ++i) {
-      auto mFace = pointers.getGeometryData()->getFace(leftFacesMaster[i]);
-      auto sFace = pointers.getGeometryData()->getFace(rightFacesSlave[i]);
+    for (indexType i = 0; i < static_cast<indexType>(leftFacesMaster.size()); ++i) {
+      auto mFace = pointers.getGeometryData()->getFaceData(leftFacesMaster[i]);
+      auto sFace = pointers.getGeometryData()->getFaceData(rightFacesSlave[i]);
 
       indexType numV = mFace->getNumberOfVerts();
       for (indexType nn = 0; nn < numV; ++nn) {
-        auto mVert = mFace->getVertex(pointers, nn);
-        auto sVert = sFace->getVertex(pointers, nn);
+        auto mVert = mFace->getVertex(nn);
+        auto sVert = sFace->getVertex(nn);
         Types::Vector3<prec> sCoor = sVert->getCoordinates();
         Types::Vector3<prec> dx = sCoor - mVert->getCoordinates();
-        auto sNodes = sVert->getNodesOfSet(pointers, meshIdDisp);
+        auto sNodes = sVert->getNodesOfSet(meshIdDisp);
         A(0, 0) = dx(0);
         A(1, 1) = dx(0);
         A(2, 2) = dx(0);

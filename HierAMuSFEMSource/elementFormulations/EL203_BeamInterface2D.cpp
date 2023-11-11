@@ -3,10 +3,9 @@
 // SPDX-License-Identifier: BSD-3-Clause
 
 
-#include "forwarddeclaration.h"
-#include "geometry/Edges.h"
+#include "geometry/Edges/EdgesData.h"
 #include "geometry/GeometryTypes.h"
-#include "geometry/Vertex.h"
+#include "geometry/VertexData.h"
 #include "plot/vtkplotClassBase.h"
 #include "shapefunctions/IntegrationsPoints/IntegrationPoints.h"
 #include <iomanip>
@@ -19,12 +18,9 @@
 
 #include <control/HandlingStructs.h>
 #include <control/OutputHandler.h>
+#include "control/ParameterList.h"
 #include <pointercollection/pointercollection.h>
 
-#include <equations/DegreeOfFreedom.h>
-#include <equations/GenericNodes.h>
-#include <equations/NodeSet.h>
-#include <equations/Nodetypes.h>
 
 #include <finiteElements/GenericFiniteElement.h>
 #include <finiteElements/beamInterfaceElement2D.h>
@@ -32,7 +28,8 @@
 #include <materials/GenericMaterialFormulation.h>
 #include <materials/MaterialformulationList.h>
 
-#include <geometry/Base.h>
+#include <geometry/GeometryBaseData.h>
+#include "geometry/GeometryData.h"
 
 #include <math/MatrixOperations.h>
 
@@ -59,7 +56,7 @@
 namespace HierAMuS::Elementformulations {
 
 EL203_BeamInterface2D::EL203_BeamInterface2D(PointerCollection *ptrCol)
-    : GenericElementFormulation(ptrCol) {}
+    : GenericElementFormulationInterface(ptrCol) {}
 
 EL203_BeamInterface2D::~EL203_BeamInterface2D() {
 
@@ -97,7 +94,7 @@ void EL203_BeamInterface2D::readData(PointerCollection &pointers,
                              "not match amount of elements!");
   }
   
-  auto Log = pointers.getSPDLogger();
+  auto &Log = pointers.getSPDLogger();
 
   Log.info("\n{:-<100}\n"
                 "*   Element 201, specified Options\n"
@@ -114,34 +111,33 @@ void EL203_BeamInterface2D::readData(PointerCollection &pointers,
 }
 
 void EL203_BeamInterface2D::setDegreesOfFreedom(
-  PointerCollection& pointers, FiniteElement::GenericFiniteElement *elem) {
+    PointerCollection &pointers, FiniteElement::beamInterfaceElement2D &elem) {
 
-  auto *ee = dynamic_cast<FiniteElement::beamInterfaceElement2D *>(elem);
-  ee->setMeshIdDisp(this->meshIdDisp);
-  ee->setMeshIdRot(this->meshIdRot);
-  ee->setMeshIdWarp(this->meshIdWarp);
+  elem.setMeshIdDisp(this->meshIdDisp);
+  elem.setMeshIdRot(this->meshIdRot);
+  elem.setMeshIdWarp(this->meshIdWarp);
 
   switch (this->mode) {
   case 1:
-    this->setDegreesOfFreedomV1(pointers, ee);
+    this->setDegreesOfFreedomV1(pointers, &elem);
     break;
   case 2:
-    this->setDegreesOfFreedomV2(pointers, ee);
+    this->setDegreesOfFreedomV2(pointers, &elem);
     break;
   case 3:
-    this->setDegreesOfFreedomV3(pointers, ee);
+    this->setDegreesOfFreedomV3(pointers, &elem);
     break;
   case 4:
-    this->setDegreesOfFreedomV4(pointers, ee);
+    this->setDegreesOfFreedomV4(pointers, &elem);
     break;
   case 5:
-    this->setDegreesOfFreedomV5(pointers, *ee);
+    this->setDegreesOfFreedomV5(pointers, elem);
     break;
   case 6:
-    this->setDegreesOfFreedomV6(pointers, *ee);
+    this->setDegreesOfFreedomV6(pointers, elem);
     break;
   case 7:
-    this->setDegreesOfFreedomV6(pointers, *ee);
+    this->setDegreesOfFreedomV6(pointers, elem);
     break;
   default:
     break;
@@ -152,30 +148,29 @@ void EL203_BeamInterface2D::setDegreesOfFreedom(
 }
 
 void EL203_BeamInterface2D::AdditionalOperations(
-  PointerCollection& pointers, FiniteElement::GenericFiniteElement *elem) {
-  auto *ee = dynamic_cast<FiniteElement::beamInterfaceElement2D *>(elem);
-
+  PointerCollection &pointers, FiniteElement::beamInterfaceElement2D &elem) {
+  
   switch (this->mode) {
   case 1:
-    this->AdditionalOperationsV1(pointers, ee);
+    this->AdditionalOperationsV1(pointers, &elem);
     break;
   case 2:
-    this->AdditionalOperationsV2(pointers, ee);
+    this->AdditionalOperationsV2(pointers, &elem);
     break;
   case 3:
-    this->AdditionalOperationsV3(pointers, ee);
+    this->AdditionalOperationsV3(pointers, &elem);
     break;
   case 4:
-    this->AdditionalOperationsV4(pointers, ee);
+    this->AdditionalOperationsV4(pointers, &elem);
     break;
   case 5:
-    this->AdditionalOperationsV5(pointers, *ee);
+    this->AdditionalOperationsV5(pointers, elem);
     break;
   case 6:
-    this->AdditionalOperationsV6(pointers, *ee);
+    this->AdditionalOperationsV6(pointers, elem);
     break;
   case 7:
-    this->AdditionalOperationsV6(pointers, *ee);
+    this->AdditionalOperationsV6(pointers, elem);
     break;
   default:
     break;
@@ -205,10 +200,10 @@ auto EL203_BeamInterface2D::getDofs(PointerCollection& pointers, FiniteElement::
 }
 
 void EL203_BeamInterface2D::setTangentResidual(
-  PointerCollection& pointers, FiniteElement::GenericFiniteElement *elem,
+  PointerCollection& pointers, FiniteElement::beamInterfaceElement2D &elem,
   Types::MatrixXX<prec> &stiffness, Types::VectorX<prec> &residual, std::vector<DegreeOfFreedom *> &Dofs) {
 
-  auto *ee = dynamic_cast<FiniteElement::beamInterfaceElement2D *>(elem);
+  auto *ee = dynamic_cast<FiniteElement::beamInterfaceElement2D *>(&elem);
   switch (this->mode) {
   case 1:
     this->setTangentResidualV1(pointers, ee, stiffness, residual, Dofs);
@@ -283,8 +278,7 @@ void EL203_BeamInterface2D::setTangentResidualV1(
 
   Materials::MaterialTransferData materialData;
 
-  IntegrationPoints GP = HierAMuS::PointerCollection::getIntegrationPoints(-1);
-  GP.setTypeOrder(IntegrationType::Gauss2D, this->intOrder);
+  IntegrationPoints GP = this->getIntegrationPoints(pointers, elem);
 
   Types::VectorX<prec> WarpingShapeX, WarpingShapeXY, WarpingShapeY,
       WarpingShapeYY, Nu, Nbeta, xiShape, dXiShape, surfShape, dSurfShape;
@@ -427,8 +421,7 @@ void EL203_BeamInterface2D::setTangentResidualV2(
 
   Materials::MaterialTransferData materialData;
 
-  IntegrationPoints GP = HierAMuS::PointerCollection::getIntegrationPoints(-1);
-  GP.setTypeOrder(IntegrationType::Gauss2D, this->intOrder + 1);
+  IntegrationPoints GP = this->getIntegrationPoints(pointers,elem);
 
   Types::VectorX<prec> WarpingShapeX, WarpingShapeXY, WarpingShapeY,
       WarpingShapeYY, Nu, Nbeta, xiShape, dXiShape, surfShape, dSurfShape;
@@ -690,8 +683,7 @@ void EL203_BeamInterface2D::setTangentResidualV3(
 
   Materials::MaterialTransferData materialData;
 
-  IntegrationPoints GP = HierAMuS::PointerCollection::getIntegrationPoints(-1);
-  GP.setTypeOrder(IntegrationType::Gauss2D, this->intOrder * 2);
+  IntegrationPoints GP = this->getIntegrationPoints(pointers, elem);
 
   Types::VectorX<prec> WarpingShapeX, WarpingShapeXY, WarpingShapeY,
       WarpingShapeYY, Nu, Nbeta, xiShape, dXiShape, surfShape, dSurfShape;
@@ -870,8 +862,7 @@ void EL203_BeamInterface2D::setTangentResidualV4(
 
   Materials::MaterialTransferData materialData;
 
-  IntegrationPoints GP = HierAMuS::PointerCollection::getIntegrationPoints(-1);
-  GP.setTypeOrder(IntegrationType::Gauss2D, this->intOrder * 2);
+  IntegrationPoints GP = this->getIntegrationPoints(pointers, elem);
 
   Types::VectorX<prec> WarpingShapeX, WarpingShapeXY, WarpingShapeY,
       WarpingShapeYY, Nu, Nbeta, xiShape, dXiShape, surfShape, dSurfShape;
@@ -1034,8 +1025,7 @@ void EL203_BeamInterface2D::setTangentResidualV5(
   FiniteElement::beamInterfaceElement2D *elem,
   Eigen::Matrix<prec, Eigen::Dynamic, Eigen::Dynamic> &stiffness,
   Eigen::Matrix<prec, Eigen::Dynamic, 1> &residual, std::vector<DegreeOfFreedom *> &Dofs) {
-  auto GP = HierAMuS::PointerCollection::getIntegrationPoints(-1);
-  GP.setTypeOrder(IntegrationType::Gauss2D, this->intOrder * 1);
+  auto GP = this->getIntegrationPoints(pointers, elem);
   indexType numberOfEdges = this->edgeMaterialMap.size();
 
   Types::VectorX<prec> WarpingShapeX, WarpingShapeXY, WarpingShapeY;
@@ -1215,112 +1205,85 @@ void EL203_BeamInterface2D::AdditionalOperationsV6(
   elem.setBCOnVert(pointers, this->meshIdRot, 2);
 
   elem.computeWarpingShapesNew(pointers, this->intOrder);
-}
 
-void EL203_BeamInterface2D::setTangentResidualV6(
-  PointerCollection& pointers,
-  FiniteElement::beamInterfaceElement2D *elem,
-  Eigen::Matrix<prec, Eigen::Dynamic, Eigen::Dynamic> &stiffness,
-  Eigen::Matrix<prec, Eigen::Dynamic, 1> &residual, std::vector<DegreeOfFreedom *> &Dofs) {
-
-  Timer<HierAMuS::ms> testtimer;
-  testtimer.start();
-  auto GP = HierAMuS::PointerCollection::getIntegrationPoints(-1);
-  GP.setTypeOrder(IntegrationType::Gauss2D, this->intOrder * 2);
+  // Calculation data which need to be stored
   indexType numberOfEdges = this->edgeMaterialMap.size();
+  indexType numCols = (this->intOrder + 1) + this->intOrder * 2;
+  numCols *= numberOfEdges;
+  elem.request_element_data_field(pointers, m_resEps_id, numCols, 1);
+  elem.request_element_data_field(pointers, m_resSig_id, numCols, 1);
+  elem.request_element_data_field(pointers, m_Eps_id, numCols, 1);
+  elem.request_element_data_field(pointers, m_Sig_id, numCols, 1);
 
-  Types::VectorX<prec> WarpingShapeX, WarpingShapeXY, WarpingShapeY;
-  Types::VectorX<prec> solution, xiShape, dXiShape;
-  Types::VectorX<prec> surfShape, dSurfShape;
+  indexType numCols2 = numberOfEdges * 3 * this->intOrder - 2;
+  elem.request_element_data_field(pointers, m_resEpsC_id, numCols2, 1);
+  elem.request_element_data_field(pointers, m_EpsC_id, numCols2, 1);
+
 
   std::vector<DegreeOfFreedom *> surfaceDispDofs;
-  elem->getDofsOnSolid(pointers, surfaceDispDofs, this->meshIdDisp,
+  elem.getDofsOnSolid(pointers, surfaceDispDofs, this->meshIdDisp,
                        this->intOrder);
-  std::vector<DegreeOfFreedom *> vertexDispDofs;
-  elem->getDofsOnVert(pointers, vertexDispDofs, this->meshIdDisp);
-  std::vector<DegreeOfFreedom *> vertexRotDofs;
-  elem->getDofsOnVert(pointers, vertexRotDofs, this->meshIdRot);
+  indexType dofCount = surfaceDispDofs.size() + 6;
+  elem.request_element_data_field(pointers,m_G_id,dofCount,numCols);
+  elem.request_element_data_field(pointers, m_H_id, numCols, numCols);
+  elem.request_element_data_field(pointers, m_J_id, numCols, numCols);
+  elem.request_element_data_field(pointers, m_L_id, numCols, numCols2);
+  elem.request_element_data_field(pointers, m_M_id, numCols, numCols);
+  
+  
 
-  Dofs.clear();
-  Dofs.insert(Dofs.end(), surfaceDispDofs.begin(), surfaceDispDofs.end());
-  Dofs.insert(Dofs.end(), vertexDispDofs.begin(), vertexDispDofs.end());
-  Dofs.insert(Dofs.end(), vertexRotDofs.begin(), vertexRotDofs.end());
 
-  elem->getSolution(pointers, Dofs, solution);
+  // Compute matrices
+  Types::MatrixXX<prec> &Gmat = elem.get_element_data_field(pointers, m_G_id);
+  Types::MatrixXX<prec> &Hmat = elem.get_element_data_field(pointers, m_H_id);
+  Types::MatrixXX<prec> &Lmat = elem.get_element_data_field(pointers, m_L_id);
+  Types::MatrixXX<prec> &Jmat = elem.get_element_data_field(pointers, m_J_id);
 
-  indexType numDofs;
-  numDofs = Dofs.size();
-  stiffness.resize(numDofs, numDofs);
-  residual.resize(numDofs);
-  stiffness.setZero();
-  residual.setZero();
+  Types::VectorX<prec> WarpingShapeX, WarpingShapeXY, WarpingShapeY;
+  Types::VectorX<prec> xiShape, dXiShape;
+  Types::VectorX<prec> surfShape, dSurfShape;
 
-  indexType numCols, numRows;
-
-  Types::Matrix3X<prec> Bmat, AmatStress, AmatEps, AmatEpsC, AmatTemp;
-  numRows = 3;
-  numCols = Dofs.size();
-  Bmat.resize(numRows, numCols);
-  Bmat.setZero();
-
-  numCols = (this->intOrder + 1) + this->intOrder * 2;
-  numCols *= numberOfEdges;
-  AmatStress.resize(numRows, numCols);
-  AmatStress.setZero();
-  AmatEps.resize(numRows, numCols);
-  AmatEps.setZero();
-
-  numCols = numberOfEdges * 3 * this->intOrder;
-  AmatEpsC.resize(numRows, numCols - 2);
-  AmatEpsC.setZero();
-
-  AmatTemp = AmatStress;
-
-  Types::MatrixXX<prec> Gmat, Hmat, Lmat, Jmat;
-  Gmat.resize(Bmat.cols(), AmatStress.cols());
-  Gmat.setZero();
-  Hmat.resize(AmatStress.cols(), AmatEps.cols());
-  Hmat.setZero();
-  Lmat.resize(AmatStress.cols(), AmatEpsC.cols());
-  Lmat.setZero();
-  Jmat.resize(AmatEps.cols(), AmatEps.cols());
-  Jmat.setZero();
-
-  Types::Vector3<prec> A1;
-  A1 = elem->getA1(pointers);
-  Types::Vector3<prec> A2;
-  A2 = elem->getA2(pointers);
+  
+  Types::Matrix3X<prec> AmatStress =
+      Types::Matrix3X<prec>::Zero(3, numCols);
 
   std::vector<Eigen::Triplet<prec, indexType>> triplets;
   triplets.reserve((this->intOrder) * 3);
-  Eigen::SparseMatrix<prec> AmatSparseSig;
-  AmatSparseSig.resize(AmatStress.rows(), AmatStress.cols());
+  Eigen::SparseMatrix<prec> AmatSparseSig(AmatStress.rows(), AmatStress.cols());
 
-  testtimer.stop();
-  std::cout << "Data allocation took: " << testtimer << std::endl;
-  testtimer.start();
+  Types::Matrix3X<prec> AmatEpsC =
+      Types::Matrix3X<prec>::Zero(3, numCols2);
+
+  auto GP = this->getIntegrationPoints(pointers,&elem);
+  auto History = elem.getHistoryDataIterator(pointers);
+  Types::Matrix3X<prec> Bmat(3, dofCount);
+
+  
+  Types::Vector3<prec> A1 = elem.getA1(pointers);
+  Types::Vector3<prec> A2 = elem.getA2(pointers);
+  Materials::MaterialTransferData matData;
+  matData.historyData = &History;
+  matData.strains.resize(3);
 
   for (auto edgeNum = 0; edgeNum < numberOfEdges; ++edgeNum) {
-    indexType gEdge = elem->getGlobalEdgeNumber(pointers, edgeNum);
+    indexType gEdge = elem.getGlobalEdgeNumber(pointers, edgeNum);
     indexType mNum = this->edgeMaterialMap[gEdge];
-    auto material =
-        pointers.getMaterialFormulationList()->getMaterial(mNum);
+    auto material = pointers.getMaterialFormulationList()->getMaterial(mNum);
 
-    Materials::MaterialTransferData matData;
+    
 
     for (auto ngp = 0; ngp < GP.getTotalGP(); ++ngp) {
       GP.setCurrNumber(ngp);
-      prec dA =
-          elem->getDA(pointers, edgeNum, GP.getXi(ngp), GP.getEta(ngp));
+      prec dA = elem.getDA(pointers, edgeNum, GP.getXi(ngp), GP.getEta(ngp));
       Bmat.setZero();
-      elem->getLocalWarpingShapesA1(pointers, WarpingShapeX,
-                                    WarpingShapeXY, edgeNum, GP.getEta(ngp));
-      elem->getXiShape(pointers, this->intOrder, GP.getXi(ngp), xiShape,
+      elem.getLocalWarpingShapesA1(pointers, WarpingShapeX, WarpingShapeXY,
+                                    edgeNum, GP.getEta(ngp));
+      elem.getXiShape(pointers, this->intOrder, GP.getXi(ngp), xiShape,
                        dXiShape);
-      elem->getLocalSurfaceDispShapesSorted(pointers, surfShape,
-                                            dSurfShape, edgeNum, GP.getEta(ngp),
+      elem.getLocalSurfaceDispShapesSorted(pointers, surfShape, dSurfShape,
+                                            edgeNum, GP.getEta(ngp),
                                             this->intOrder, this->meshIdDisp);
-      prec z = elem->getZCoordinate(pointers, edgeNum, GP.getEta(ngp));
+      prec z = elem.getZCoordinate(pointers, edgeNum, GP.getEta(ngp));
 
       indexType pos = 0;
       for (auto j = 0; j < surfaceDispDofs.size() / 3; ++j) {
@@ -1328,17 +1291,11 @@ void EL203_BeamInterface2D::setTangentResidualV6(
         Bmat.block(1, pos, 1, 3) = A2.transpose() * xiShape(0) * dSurfShape(j);
         Bmat.block(2, pos, 1, 3) = A1.transpose() * xiShape(0) * dSurfShape(j);
         Bmat.block(2, pos, 1, 3) += A2.transpose() * dXiShape(0) * surfShape(j);
-        // Bmat(0, pos) = dXiShape(0) * surfShape(j);
-        // Bmat(1, pos + 1) = xiShape(0) * dSurfShape(j);
-        // Bmat(2, pos) = xiShape(0) * dSurfShape(j);
-        // Bmat(2, pos + 1) = dXiShape(0) * surfShape(j);
 
         pos += 3;
       }
       Bmat.block(0, pos, 1, 3) = A1.transpose() * dXiShape(1);
       Bmat.block(2, pos, 1, 3) = A2.transpose() * dXiShape(1);
-      // Bmat(0, pos) = dXiShape(1);
-      // Bmat(2, pos + 1) = dXiShape(1);
       pos += 3;
       Bmat(0, pos) = -z * dXiShape(1);
       Bmat(2, pos) = -xiShape(1);
@@ -1369,25 +1326,209 @@ void EL203_BeamInterface2D::setTangentResidualV6(
       }
       AmatSparseSig.setFromTriplets(triplets.begin(), triplets.end());
 
-      // AmatStress(0, pos + edgeNum) = prec(1);
-      // pos += numberOfEdges;
-      // AmatStress(1, pos + edgeNum) = prec(1);
-      // pos += numberOfEdges;
-      // for(auto i=0;i<numberOfEdges;++i){
-
-      // AmatStress(1, pos) = dSurfShape(i);
-      // pos += 1;
-      // }
-      // AmatStress(2, pos + edgeNum) = prec(1);
       AmatStress = AmatSparseSig;
-      // AmatEps = AmatStress;
 
       pos = 0;
       for (auto j = 2; j < WarpingShapeX.rows(); ++j) {
         AmatEpsC(0, pos) = WarpingShapeX(j);
         ++pos;
       }
-      // AmatEpsC(1, pos + edgeNum) = prec(1);
+
+      for (auto j = 1; j < dSurfShape.rows(); ++j) {
+        AmatEpsC(1, pos) = dSurfShape(j);
+        ++pos;
+      }
+      for (auto j = 2; j < WarpingShapeXY.rows(); ++j) {
+        AmatEpsC(2, pos) = WarpingShapeXY(j);
+        ++pos;
+      }
+
+      matData.strains.setZero();
+      material->getMaterialData(pointers, matData, GP.getIntegrationPoint());
+
+      Gmat += Bmat.transpose() * AmatStress * dA * GP.getWeight(ngp);
+      Jmat += AmatStress.transpose() * matData.materialTangent * AmatStress *
+              dA * GP.getWeight(ngp);
+      Hmat +=
+          AmatSparseSig.transpose() * AmatSparseSig * dA * GP.getWeight(ngp);
+
+      Lmat += AmatStress.transpose() * AmatEpsC * dA * GP.getWeight(ngp);
+
+      History.next();
+    }
+  }
+
+}
+
+void EL203_BeamInterface2D::setTangentResidualV6(
+  PointerCollection& pointers,
+  FiniteElement::beamInterfaceElement2D *elem,
+  Eigen::Matrix<prec, Eigen::Dynamic, Eigen::Dynamic> &stiffness,
+  Eigen::Matrix<prec, Eigen::Dynamic, 1> &residual, std::vector<DegreeOfFreedom *> &Dofs) {
+
+  Timer<HierAMuS::ms> testtimer;
+  testtimer.start();
+  auto GP = this->getIntegrationPoints(pointers, elem);
+  indexType numberOfEdges = this->edgeMaterialMap.size();
+
+  Types::VectorX<prec> WarpingShapeX, WarpingShapeXY, WarpingShapeY;
+  Types::VectorX<prec> xiShape, dXiShape;
+  Types::VectorX<prec> surfShape, dSurfShape;
+
+  std::vector<DegreeOfFreedom *> surfaceDispDofs;
+  elem->getDofsOnSolid(pointers, surfaceDispDofs, this->meshIdDisp,
+                       this->intOrder);
+  std::vector<DegreeOfFreedom *> vertexDispDofs;
+  elem->getDofsOnVert(pointers, vertexDispDofs, this->meshIdDisp);
+  std::vector<DegreeOfFreedom *> vertexRotDofs;
+  elem->getDofsOnVert(pointers, vertexRotDofs, this->meshIdRot);
+
+  Dofs.clear();
+  Dofs.insert(Dofs.end(), surfaceDispDofs.begin(), surfaceDispDofs.end());
+  Dofs.insert(Dofs.end(), vertexDispDofs.begin(), vertexDispDofs.end());
+  Dofs.insert(Dofs.end(), vertexRotDofs.begin(), vertexRotDofs.end());
+
+  //elem->getSolution(pointers, Dofs, solution);
+  Types::VectorX<prec> solution = elem->getSolution(pointers, Dofs);
+  
+
+  indexType numDofs;
+  numDofs = Dofs.size();
+  stiffness.resize(numDofs, numDofs);
+  residual.resize(numDofs);
+  stiffness.setZero();
+  residual.setZero();
+
+  indexType numCols, numRows;
+
+  numRows = 3;
+  numCols = Dofs.size();
+  Types::Matrix3X<prec> Bmat = Types::Matrix3X<prec>::Zero(numRows, numCols);
+
+  numCols = (this->intOrder + 1) + this->intOrder * 2;
+  numCols *= numberOfEdges;
+
+  Types::Matrix3X<prec> AmatStress =
+      Types::Matrix3X<prec>::Zero(numRows, numCols);
+  Types::Matrix3X<prec> AmatTemp =
+      Types::Matrix3X<prec>::Zero(numRows, numCols);
+
+
+  Types::Matrix3X<prec> AmatEps = Types::Matrix3X<prec>::Zero(numRows, numCols);
+
+  numCols = numberOfEdges * 3 * this->intOrder;
+
+  Types::Matrix3X<prec> AmatEpsC =
+      Types::Matrix3X<prec>::Zero(numRows, numCols - 2);
+
+  Types::MatrixXX<prec> &Gmat = elem->get_element_data_field(pointers, m_G_id);
+  Types::MatrixXX<prec> &Hmat = elem->get_element_data_field(pointers, m_H_id);
+  Types::MatrixXX<prec> &Lmat = elem->get_element_data_field(pointers, m_L_id);
+  Types::MatrixXX<prec> &Jmat = elem->get_element_data_field(pointers, m_J_id);
+
+  Types::MatrixXX<prec> &resEpsC =
+      elem->get_element_data_field(pointers, m_resEpsC_id);
+  Types::MatrixXX<prec> &resEps =
+      elem->get_element_data_field(pointers, m_resEps_id);
+  Types::MatrixXX<prec> &resSig =
+      elem->get_element_data_field(pointers, m_resSig_id);
+
+  Types::MatrixXX<prec> &EpsC =
+      elem->get_element_data_field(pointers, m_EpsC_id);
+  Types::MatrixXX<prec> &Eps =
+      elem->get_element_data_field(pointers, m_Eps_id);
+  Types::MatrixXX<prec> &Sig =
+      elem->get_element_data_field(pointers, m_Sig_id);
+  
+
+  Types::Vector3<prec> A1 = elem->getA1(pointers);
+  Types::Vector3<prec> A2 = elem->getA2(pointers);
+
+  std::vector<Eigen::Triplet<prec, indexType>> triplets;
+  triplets.reserve((this->intOrder) * 3);
+  Eigen::SparseMatrix<prec> AmatSparseSig(AmatStress.rows(), AmatStress.cols());
+
+  testtimer.stop();
+  std::cout << "Data allocation took: " << testtimer << std::endl;
+  testtimer.start();
+
+  auto History = elem->getHistoryDataIterator(pointers);
+
+  Types::VectorX<prec> resEpsP(AmatEps.cols());
+  Types::VectorX<prec> resSigP(AmatStress.cols());
+  
+  for (auto edgeNum = 0; edgeNum < numberOfEdges; ++edgeNum) {
+    indexType gEdge = elem->getGlobalEdgeNumber(pointers, edgeNum);
+    indexType mNum = this->edgeMaterialMap[gEdge];
+    auto material =
+        pointers.getMaterialFormulationList()->getMaterial(mNum);
+
+    Materials::MaterialTransferData matData;
+    matData.historyData = &History;
+
+    for (auto ngp = 0; ngp < GP.getTotalGP(); ++ngp) {
+      GP.setCurrNumber(ngp);
+      prec dA =
+          elem->getDA(pointers, edgeNum, GP.getXi(ngp), GP.getEta(ngp));
+      Bmat.setZero();
+      elem->getLocalWarpingShapesA1(pointers, WarpingShapeX,
+                                    WarpingShapeXY, edgeNum, GP.getEta(ngp));
+      elem->getXiShape(pointers, this->intOrder, GP.getXi(ngp), xiShape,
+                       dXiShape);
+      elem->getLocalSurfaceDispShapesSorted(pointers, surfShape,
+                                            dSurfShape, edgeNum, GP.getEta(ngp),
+                                            this->intOrder, this->meshIdDisp);
+      prec z = elem->getZCoordinate(pointers, edgeNum, GP.getEta(ngp));
+
+      indexType pos = 0;
+      for (auto j = 0; j < surfaceDispDofs.size() / 3; ++j) {
+        Bmat.block(0, pos, 1, 3) = A1.transpose() * dXiShape(0) * surfShape(j);
+        Bmat.block(1, pos, 1, 3) = A2.transpose() * xiShape(0) * dSurfShape(j);
+        Bmat.block(2, pos, 1, 3) = A1.transpose() * xiShape(0) * dSurfShape(j);
+        Bmat.block(2, pos, 1, 3) += A2.transpose() * dXiShape(0) * surfShape(j);
+
+        pos += 3;
+      }
+      Bmat.block(0, pos, 1, 3) = A1.transpose() * dXiShape(1);
+      Bmat.block(2, pos, 1, 3) = A2.transpose() * dXiShape(1);
+      pos += 3;
+      Bmat(0, pos) = -z * dXiShape(1);
+      Bmat(2, pos) = -xiShape(1);
+
+      pos = 0;
+      AmatStress.setZero();
+      prec sh, dsh;
+      indexType cpos = pos + edgeNum * (this->intOrder + 1);
+      triplets.clear();
+      for (auto i = 0; i < this->intOrder + 1; ++i) {
+        HierAMuS::LegendreShapes::getShape(sh, dsh, GP.getEta(ngp), i);
+        indexType row = 0;
+        triplets.emplace_back(row, cpos + i, sh);
+      }
+      pos += (this->intOrder + 1) * numberOfEdges;
+      cpos = pos + this->intOrder * edgeNum;
+      for (auto i = 0; i < this->intOrder; ++i) {
+        HierAMuS::LegendreShapes::getShape(sh, dsh, GP.getEta(ngp), i);
+        indexType row = 1;
+        triplets.emplace_back(row, cpos + i, sh);
+      }
+      pos += (this->intOrder) * numberOfEdges;
+      cpos = pos + this->intOrder * edgeNum;
+      for (auto i = 0; i < this->intOrder; ++i) {
+        HierAMuS::LegendreShapes::getShape(sh, dsh, GP.getEta(ngp), i);
+        indexType row = 2;
+        triplets.emplace_back(row, cpos + i, sh);
+      }
+      AmatSparseSig.setFromTriplets(triplets.begin(), triplets.end());
+
+      AmatStress = AmatSparseSig;
+
+      pos = 0;
+      for (auto j = 2; j < WarpingShapeX.rows(); ++j) {
+        AmatEpsC(0, pos) = WarpingShapeX(j);
+        ++pos;
+      }
+
       for (auto j = 1; j < dSurfShape.rows(); ++j) {
         AmatEpsC(1, pos) = dSurfShape(j);
         ++pos;
@@ -1400,19 +1541,15 @@ void EL203_BeamInterface2D::setTangentResidualV6(
       matData.strains = Bmat * solution;
       material->getMaterialData(pointers, matData,GP.getIntegrationPoint());
 
-      // dA *= prec(2);
-
-      Gmat += Bmat.transpose() * AmatStress * dA * GP.getWeight(ngp);
-      //      Jmat += AmatEps.transpose() * matData.materialTangent * AmatEps *
-      //      dA *
-      //          GP.getWeight(ngp);
+      //Gmat += Bmat.transpose() * AmatStress * dA * GP.getWeight(ngp);
       Jmat += AmatStress.transpose() * matData.materialTangent * AmatStress *
               dA * GP.getWeight(ngp);
-      // Hmat += AmatStress.transpose() * AmatEps * dA * GP.getWeight(ngp);
-      Hmat +=
-          AmatSparseSig.transpose() * AmatSparseSig * dA * GP.getWeight(ngp);
+      //Hmat +=
+      //    AmatSparseSig.transpose() * AmatSparseSig * dA * GP.getWeight(ngp);
 
-      Lmat += AmatStress.transpose() * AmatEpsC * dA * GP.getWeight(ngp);
+      //Lmat += AmatStress.transpose() * AmatEpsC * dA * GP.getWeight(ngp);
+
+      History.next();
     }
   }
   testtimer.stop();
@@ -1446,52 +1583,11 @@ void EL203_BeamInterface2D::setTangentResidualV6(
   std::cout << "First version duration: " << std::setprecision(16) << testtimer
             << " ms" << std::endl;
 
-  // Types::MatrixXX<prec> JMatHmat, tempMat;
-  // tempMat = Hmat.transpose();
-  // JMatHmat = Math::AinvTimesB(Jmat, tempMat);
 
-  // Types::MatrixXX<prec> Mmat = Hmat * JMatHmat;
-
-  // Types::MatrixXX<prec> MinvG, MinvL;
-  // tempMat = Gmat.transpose();
-  // MinvG = Math::AinvTimesB(Mmat, tempMat);
-  // MinvL = Math::AinvTimesB(Mmat, Lmat);
-
-  // Types::MatrixXX<prec> GMinvL;
-  // GMinvL = Gmat * MinvL;
-
-  // Types::MatrixXX<prec> LMinvL;
-  // LMinvL = Lmat.transpose() * MinvL;
-
-  // Types::MatrixXX<prec> LMinvLInvGMinvL;
-  // tempMat = GMinvL.transpose();
-  // LMinvLInvGMinvL = Math::AinvTimesB(LMinvL, tempMat);
-
-  // stiffness = Gmat * MinvG - GMinvL * LMinvLInvGMinvL;
-
-  // auto Mmat = Hmat * Jmat.inverse() * Hmat.transpose();
-  // auto Mmatinv = Mmat.inverse();
-  // stiffness = Gmat * Mmatinv * Gmat.transpose() -
-  //             Gmat * Mmatinv * Lmat *
-  //                 (Lmat.transpose() * Mmatinv * Lmat).inverse() *
-  //                 Lmat.transpose() * Mmatinv * Gmat.transpose();
-
-  // Math::setEntriesToZeroEpsilon(stiffness, prec(100));
 
   residual = stiffness * solution;
 
-  // indexType nn = Dofs.size();
-  // nn=nn-6;
-  // std::cout << stiffness.block(nn,nn,6,6) << std::endl;
 
-  // Eigen::IOFormat CleanFmt(4, 0, ", ", "\n", "[", "]");
-
-  // Eigen::EigenSolver<Types::MatrixXX<prec>> es(stiffness);
-  // //std::cout << "Eigenvalues of J are:\n " << es.eigenvalues() << std::endl;
-  // // std::cout << std::setprecision(3) << Hmat.format(CleanFmt)  <<
-  // std::endl; elem->setUserConstant("eva", es.eigenvalues()(0).real());
-  // elem->setUserConstant("evb", es.eigenvalues()(1).real());
-  // elem->setUserConstant("evc", es.eigenvalues()(2).real());
 }
 
 void EL203_BeamInterface2D::setDegreesOfFreedomV7(
@@ -1521,8 +1617,7 @@ void EL203_BeamInterface2D::setTangentResidualV7(
 
   Timer<HierAMuS::ms> testtimer;
   testtimer.start();
-  auto GP = HierAMuS::PointerCollection::getIntegrationPoints(-1);
-  GP.setTypeOrder(IntegrationType::Gauss2D, this->intOrder * 2);
+  auto GP = this->getIntegrationPoints(pointers, elem);
   indexType numberOfEdges = this->edgeMaterialMap.size();
 
   Types::VectorX<prec> WarpingShapeX, WarpingShapeXY, WarpingShapeY,
@@ -1799,18 +1894,15 @@ void EL203_BeamInterface2D::setTangentResidualV7(
 auto EL203_BeamInterface2D::getNumberOfIntergrationPoints(
     PointerCollection &pointers, FiniteElement::GenericFiniteElement *elem)
     -> indexType {
-  auto GP = HierAMuS::PointerCollection::getIntegrationPoints(-1);
-  GP.setTypeOrder(IntegrationType::Gauss2D, this->intOrder * 2);
-  indexType numberOfEdges = this->edgeMaterialMap.size();
-  return GP.getTotalGP() * numberOfEdges;
+  auto GP = this->getIntegrationPoints(pointers,elem);
+  return GP.getTotalGP()*elem->getNumberOfEdges(pointers);
 }
 
 void EL203_BeamInterface2D::toParaviewAdaper(
-    PointerCollection &pointers, FiniteElement::GenericFiniteElement *elem,
+    PointerCollection &pointers, FiniteElement::beamInterfaceElement2D &elem,
     vtkPlotInterface &paraviewAdapter, ParaviewSwitch control) {
 #ifdef USE_VTK
-  FiniteElement::beamInterfaceElement2D *element =
-      dynamic_cast<FiniteElement::beamInterfaceElement2D *>(elem);
+  FiniteElement::beamInterfaceElement2D *element = &elem;
 
   if (this->plotVertexMap.empty()) {
     indexType nEdges = this->edgeMaterialMap.size();
@@ -1818,11 +1910,11 @@ void EL203_BeamInterface2D::toParaviewAdaper(
     indexType maxVertNum = 0;
     for (auto i = 0; i < nEdges; ++i) {
       auto &edge =
-          pointers.getGeometryData()->getEdge(element->getGlobalEdgeNumber(pointers, i));
+          pointers.getGeometryData()->getEdgeData(element->getGlobalEdgeNumber(pointers, i));
       indexType nVerts = edge.getNumberOfVerts();
       for (auto j = 0; j < nVerts; ++j) {
-        auto &vert = edge.getVertex(pointers, j);
-        indexType vertId = vert.getId();
+        auto vert = edge.getVertex(j);
+        indexType vertId = vert->getId();
         this->plotVertexMap[vertId] = j;
         if (vertId > maxVertNum)
           maxVertNum = vertId;
@@ -1845,27 +1937,27 @@ void EL203_BeamInterface2D::toParaviewAdaper(
   case ParaviewSwitch::Mesh: {
     indexType nEdges = this->edgeMaterialMap.size();
 
-    indexType matNum = elem->getMaterial()->getNumber();
+    indexType matNum = elem.getMaterial()->getNumber();
     std::vector<indexType> cellIds;
     for (auto i = 0; i < nEdges; ++i) {
       auto &edge =
-          pointers.getGeometryData()->getEdge(element->getGlobalEdgeNumber(pointers, i));
+          pointers.getGeometryData()->getEdgeData(element->getGlobalEdgeNumber(pointers, i));
       cellIds.resize(4);
 
       for (auto j = 0; j < 2; ++j) {
-        auto &vert = edge.getVertex(pointers, j);
-        Types::Vector3<prec> coors = vert.getCoordinates();
-        paraviewAdapter.addPoint(0, matNum, vert.getId(), coors);
+        auto vert = edge.getVertex(j);
+        Types::Vector3<prec> coors = vert->getCoordinates();
+        paraviewAdapter.addPoint(0, matNum, vert->getId(), coors);
         // std::cout << coors.transpose() << std::endl;
         coors += element->getA1(pointers) * element->getThickness(pointers);
         // std::cout << coors.transpose() << std::endl;
         paraviewAdapter.addPoint(
-            0, matNum, this->plotVertexMapOpposite[vert.getId()], coors);
-        cellIds[j * 3] = vert.getId();
-        cellIds[1 + j % 2] = this->plotVertexMapOpposite[vert.getId()];
+            0, matNum, this->plotVertexMapOpposite[vert->getId()], coors);
+        cellIds[j * 3] = vert->getId();
+        cellIds[1 + j % 2] = this->plotVertexMapOpposite[vert->getId()];
       }
       int celltype = VTK_QUAD;
-      paraviewAdapter.addCell(0, matNum, elem->getId(), i + 1, cellIds, 4,
+      paraviewAdapter.addCell(0, matNum, elem.getId(), i + 1, cellIds, 4,
                               celltype);
     }
     auto &vert = element->getVertex(pointers, 0);
@@ -1874,7 +1966,7 @@ void EL203_BeamInterface2D::toParaviewAdaper(
     cellIds.clear();
     cellIds.resize(1);
     cellIds[0] = vert.getId();
-    paraviewAdapter.addCell(0, matNum, elem->getId(), nEdges + 1, cellIds, 1,
+    paraviewAdapter.addCell(0, matNum, elem.getId(), nEdges + 1, cellIds, 1,
                             VTK_VERTEX);
 
   } break;
@@ -1897,16 +1989,16 @@ void EL203_BeamInterface2D::toParaviewAdaper(
     Types::Vector3<prec> rsol, A1;
     A1 = element->getA1(pointers);
 
-    indexType matNum = elem->getMaterial()->getNumber();
+    indexType matNum = elem.getMaterial()->getNumber();
     for (auto i = 0; i < nEdges; ++i) {
       auto &edge =
-          pointers.getGeometryData()->getEdge(element->getGlobalEdgeNumber(pointers, i));
+          pointers.getGeometryData()->getEdgeData(element->getGlobalEdgeNumber(pointers, i));
       Dofs.clear();
-      edge.getH1Dofs(pointers, Dofs, this->meshIdDisp, 1);
+      edge.getH1Dofs(Dofs, this->meshIdDisp, 1);
       element->getSolution(pointers, Dofs, dispSolution);
       prec eta = prec(-1);
       for (auto j = 0; j < 2; ++j) {
-        auto &vert = edge.getVertex(pointers, j);
+        auto vert = edge.getVertex(j);
         prec z = element->getZCoordinate(pointers, i, eta);
         eta += prec(2);
         rsol = vertexDispSolution - z * vertexRotSolution(0) * A1;
@@ -1916,10 +2008,10 @@ void EL203_BeamInterface2D::toParaviewAdaper(
           solr[k] = rsol[k];
         }
 
-        paraviewAdapter.setPointData(0, matNum, vert.getId(), sol, 3,
+        paraviewAdapter.setPointData(0, matNum, vert->getId(), sol, 3,
                                      paraviewNames::DisplacementName());
         paraviewAdapter.setPointData(
-            0, matNum, this->plotVertexMapOpposite[vert.getId()], solr, 3,
+            0, matNum, this->plotVertexMapOpposite[vert->getId()], solr, 3,
             paraviewNames::DisplacementName());
       }
     }
@@ -1948,5 +2040,16 @@ void EL203_BeamInterface2D::toParaviewAdaper(
 void EL203_BeamInterface2D::computeStressesAndStrains(
     FiniteElement::beamInterfaceElement2D &elem, indexType localEdgeNumber,
     prec xi, prec eta) {}
+
+auto EL203_BeamInterface2D::getIntegrationPoints(
+    PointerCollection &pointers, FiniteElement::GenericFiniteElement *elem)
+    -> IntegrationPoints {
+  auto GP = elem->getIntegrationPoints(pointers);
+  GP.setOrder(this->intOrder * 2);
+  return GP;
+}
+
+
+
 
 } // namespace HierAMuS::Elementformulations

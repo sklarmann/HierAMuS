@@ -7,12 +7,10 @@
 #pragma once
 
 #include "MatrixTypes.h"
-#include <forwarddeclaration.h>
 
-#include <elementFormulations/GenericElementFormulation.h>
+#include "elementFormulations/GenericElementFormulationInterface.h"
 #include <Eigen/Dense>
 
-#include "control/ParameterList.h"
 
 #include "datatypes.h"
 #include "finiteElements/NormTypes.h"
@@ -21,18 +19,18 @@
 namespace HierAMuS::Elementformulations {
 
 
-  class EL205_HDivTest : public GenericElementFormulation {
+  class EL205_HDivTest : public GenericElementFormulationInterface<FiniteElement::Face> {
     public:
       explicit EL205_HDivTest(PointerCollection *ptrCol);
       ~EL205_HDivTest() override;
       void readData(PointerCollection &pointers, ParameterList &list) override;
-      void setDegreesOfFreedom(PointerCollection& pointers, FiniteElement::GenericFiniteElement *elem) override;
-      void AdditionalOperations(PointerCollection& pointers, FiniteElement::GenericFiniteElement *elem) override;
+      void setDegreesOfFreedom(PointerCollection& pointers, FiniteElement::Face &elem) override;
+      void AdditionalOperations(PointerCollection& pointers, FiniteElement::Face &elem) override;
       auto getDofs(PointerCollection& pointers, FiniteElement::GenericFiniteElement *elem)
       -> std::vector<DegreeOfFreedom *> override;
 
       void setTangentResidual(PointerCollection& pointers,
-                              FiniteElement::GenericFiniteElement* elem,
+                              FiniteElement::Face &elem,
                               Eigen::Matrix<prec, Eigen::Dynamic, Eigen::Dynamic>& stiffness,
                               Eigen::Matrix<prec, Eigen::Dynamic, 1>& residual, std::vector<DegreeOfFreedom*>& Dofs) override;
 
@@ -42,17 +40,17 @@ namespace HierAMuS::Elementformulations {
           -> indexType override;
 
       void toParaviewAdaper(
-          PointerCollection& pointers, FiniteElement::GenericFiniteElement* elem,
+          PointerCollection& pointers, FiniteElement::Face &elem,
           vtkPlotInterface& paraviewAdapter, ParaviewSwitch control) override;
       
-      auto  computeNorm(PointerCollection& pointers, FiniteElement::GenericFiniteElement* elem, FiniteElement::NormTypes type) -> prec override;
+      auto  computeNorm(PointerCollection& pointers, FiniteElement::Face* elem, FiniteElement::NormTypes type) -> prec;
 
 
     private:
 
       void setTangentResidualFluss(
         PointerCollection& pointers,
-        FiniteElement::GenericFiniteElement* elem,
+        FiniteElement::Face &elem,
         Eigen::Matrix<prec, Eigen::Dynamic, Eigen::Dynamic>& stiffness,
         Eigen::Matrix<prec, Eigen::Dynamic, 1>& residual, std::vector<DegreeOfFreedom*>& Dofs);
         
@@ -60,15 +58,11 @@ namespace HierAMuS::Elementformulations {
 
       void setTangentResidualHellingerReissner(
         PointerCollection& pointers,
-        FiniteElement::GenericFiniteElement* elem,
+        FiniteElement::Face &elem,
         Eigen::Matrix<prec, Eigen::Dynamic, Eigen::Dynamic>& stiffness,
         Eigen::Matrix<prec, Eigen::Dynamic, 1>& residual, std::vector<DegreeOfFreedom*>& Dofs);
 
-      void setTangentResidualtest(
-        PointerCollection& pointers,
-        FiniteElement::GenericFiniteElement* elem,
-        Eigen::Matrix<prec, Eigen::Dynamic, Eigen::Dynamic>& stiffness,
-        Eigen::Matrix<prec, Eigen::Dynamic, 1>& residual, std::vector<DegreeOfFreedom*>& Dofs);
+
 
 
       Types::MatrixXX<prec> getBMatrixepsilon(const Types::Matrix2X<prec>& shapeDerivdisp, indexType numDofsdisp);

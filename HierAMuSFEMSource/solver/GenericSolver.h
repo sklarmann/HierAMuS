@@ -8,13 +8,12 @@
 #include <Eigen/Dense>
 #include <Eigen/SparseCore>
 
-#include <Base/FEMBase.h>
 #include "types/MatrixTypes.h"
 #include "SolverTypes.h"
 
 namespace HierAMuS {
 
-class GenericSolver : public FEMBase {
+class GenericSolver {
 public:
   GenericSolver();
   virtual ~GenericSolver();

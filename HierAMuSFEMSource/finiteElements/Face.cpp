@@ -2,158 +2,112 @@
 //
 // SPDX-License-Identifier: BSD-3-Clause
 
-
-
 #include "Face.h"
-#include "equations/Nodetypes.h"
-#include "geometry/Base.h"
+#include "geometry/GeometryBaseData.h"
+#include "geometry/GeometryData.h"
+#include "geometry/Faces/FacesRuntime.h"
+#include "geometry/Faces/FacesData.h"
+#include "geometry/Faces/FacesH1Interface.h"
+#include "geometry/Faces/FacesHDivInterface.h"
+#include "solver/GenericSolutionState.h"
 #include <vector>
 
 namespace HierAMuS::FiniteElement {
 Face::~Face() = default;
 
 auto Face::getType() -> Elementtypes { return Elementtypes::Face; }
-void Face::setFace(indexType faceIn) { this->face = faceIn; }
-auto Face::getVertexIds(PointerCollection& pointers) -> std::vector<indexType> {
-  auto tempFace =
-      pointers.getGeometryData()->getFace(this->face);
-  std::vector<indexType> vertIds;
-  tempFace->getVerts(vertIds);
-  return vertIds;
+void Face::set_pointers(PointerCollection &pointers) {
+  m_face_object = pointers.getGeometryData()->getFaceData(m_face);
+  m_face_runtime = pointers.getGeometryData()->getFaceRuntime(m_face);
+}
+void Face::setFace(indexType faceIn) { this->m_face = faceIn; }
+auto Face::getVertexIds(PointerCollection &pointers) -> std::vector<indexType> {
+  return m_face_runtime->getVertexNumbers();
 }
 auto Face::getVertex(Face::ptrCol &pointers, indexType localNumber)
-    -> Geometry::Vertex & {
+    -> Geometry::VertexData & {
   std::vector<indexType> vertIds;
   vertIds = this->getVertexIds(pointers);
-
-  return pointers.getGeometryData()->getVertex(vertIds[localNumber]);
+  
+  return pointers.getGeometryData()->getVertexData(vertIds[localNumber]);
 }
 auto Face::getEdge(Face::ptrCol &pointers, indexType localNumber)
-    -> Geometry::Edges & {
-  Geometry::Base *temp;
-  temp = pointers.getGeometryData()->getFace(this->face);
-  std::vector<indexType> EdgeNums;
-  temp->getEdges(EdgeNums);
-  return pointers.getGeometryData()->getEdge(EdgeNums[localNumber]);
+    -> Geometry::EdgesData & {
+  auto EdgeNums = m_face_runtime->getEdgeNumbers();
+  return pointers.getGeometryData()->getEdgeData(EdgeNums[localNumber]);
 }
 auto Face::getFace(Face::ptrCol &pointers, indexType localNumber)
-    -> Geometry::Faces * {
-  return pointers.getGeometryData()->getFace(this->face);
+    -> Geometry::FacesData * {
+  return m_face_object;
 }
 
 void Face::setAllNodeBoundaryConditionMeshId(Face::ptrCol &pointers,
                                              indexType meshId, indexType dof) {
-  auto temp = pointers.getGeometryData()->getFace(this->face);
-  temp->setAllNodeBoundaryConditionMeshId(pointers, meshId, dof);
-  // GenericFiniteElement::setAllNodeBoundaryConditionMeshId(pointers, meshId,
-  // dof);
+  m_face_runtime->setAllNodeBoundaryConditionMeshId(meshId, dof);
 }
 
-auto Face::getNumberOfVertices(PointerCollection& pointers) -> indexType {
-  return GenericFiniteElement::getNumberOfVertices(pointers);
+auto Face::getNumberOfVertices(PointerCollection &pointers) -> indexType {
+  return m_face_runtime->getNumberOfVerts();
 }
-auto Face::getNumberOfEdges(PointerCollection& pointers) -> indexType {
-  return GenericFiniteElement::getNumberOfEdges(pointers);
+auto Face::getNumberOfEdges(PointerCollection &pointers) -> indexType {
+  return m_face_runtime->getNumberOfEdges();
 }
 
 auto Face::getJacobian(ptrCol &pointers, IntegrationPoint &IntegrationPt)
-    -> Types::MatrixXX<prec> {
-  auto geomElement = pointers.getGeometryData()->getFace(this->face);
-  return geomElement->getJacobian(pointers, IntegrationPt);
+    -> Types::Matrix22<prec> {
+  return m_face_runtime->getJacobian(IntegrationPt);
 }
-void Face::getJacobian(Face::ptrCol &pointers, Types::Matrix22<prec> &jacobi,
-                       prec xsi, prec eta) {
-  GenericFiniteElement::getJacobian(pointers, jacobi, xsi, eta);
-}
+
 void Face::setH1Shapes(Face::ptrCol &pointers, indexType meshid,
                        indexType order) {
-  Geometry::Faces *tempFace;
-  tempFace = pointers.getGeometryData()->getFace(this->face);
-  tempFace->setH1Shapes(pointers, meshid, order, NodeTypes::displacement);
+  m_face_runtime->getH1Face()->setH1Shapes(meshid, order,
+                                           NodeTypes::displacement);
 }
 void Face::getH1Dofs(Face::ptrCol &pointers,
                      std::vector<DegreeOfFreedom *> &Dofs, indexType meshID,
                      indexType order) {
-  pointers.getGeometryData()
-      ->getFace(this->face)
-      ->getH1Dofs(pointers, Dofs, meshID, order);
+  Dofs = m_face_runtime->getH1Face()
+             ->getH1Dofs(meshID, order);
 }
 
 auto Face::getH1Nodes(ptrCol &pointers, indexType meshID, indexType order)
     -> std::vector<GenericNodes *> {
-  return pointers.getGeometryData()
-      ->getFace(this->face)
-      ->getH1Nodes(pointers, meshID, order);
-}
-
-void Face::getH1Shapes(ptrCol &pointers, indexType order,
-                       Types::MatrixXX<prec> &jacobi,
-                       Types::VectorX<prec> &shape,
-                       Types::MatrixXX<prec> &shapeDerivative,
-                       IntegrationPoint &IntegrationPt) {
-  auto geomElement = pointers.getGeometryData()->getFace(this->face);
-  auto shapes = geomElement->getH1Shapes(pointers, order, IntegrationPt);
-  shape = shapes.shapes;
-  shapeDerivative = shapes.shapeDeriv;
-  shapeDerivative = jacobi.inverse().transpose() * shapeDerivative;
-}
-void Face::getH1Shapes(Face::ptrCol &pointers, indexType order,
-                       Types::Matrix22<prec> &jacobi,
-                       Types::VectorX<prec> &shape,
-                       Types::Matrix2X<prec> &dshape, prec xi, prec eta) {
-  auto geoFace = pointers.getGeometryData()->getFace(this->face);
-  geoFace->getH1Shapes(pointers, order, shape, dshape, xi, eta);
-  dshape = jacobi.inverse().transpose() * dshape;
+  return m_face_runtime->getH1Face()
+      ->getH1Nodes(meshID, order);
 }
 
 auto Face::getH1Shapes(ptrCol &pointers, indexType order,
-                       Types::MatrixXX<prec> &jacobi,
+                       Types::Matrix22<prec> &jacobi,
                        IntegrationPoint &IntegrationPt) -> Geometry::H1Shapes {
-  auto geoFace = pointers.getGeometryData()->getFace(this->face);
-  auto shapes = geoFace->getH1Shapes(pointers, order, IntegrationPt);
-  shapes.shapeDeriv = jacobi.inverse().transpose() * shapes.shapeDeriv;
+  auto shapes = m_face_runtime->getH1Face()->getH1Shapes(order, IntegrationPt);
+  Types::Matrix22<prec> jacinv = jacobi.inverse().transpose();
+  shapes.shapeDeriv = jacinv * shapes.shapeDeriv;
   return shapes;
 }
 
 auto Face::getIntegrationPoints(ptrCol &pointers) -> IntegrationPoints {
-  auto temp = pointers.getGeometryData()->getFace(this->face);
-  return temp->getIntegrationPoints(pointers,this->id);
+  return m_face_runtime->getIntegrationPoints(this->m_id);
 }
 
 void Face::setHDivShapes(Face::ptrCol &pointers, indexType meshid,
                          indexType order, NodeTypes type) {
-  Geometry::Faces *tempFace;
-  tempFace = pointers.getGeometryData()->getFace(this->face);
-  tempFace->setHDivShapes(pointers, meshid, order, type);
+  m_face_runtime->getHDivFace()->setHDivShapes(meshid, order, type);
 }
 void Face::getHDivDofs(Face::ptrCol &pointers,
-                       std::vector<DegreeOfFreedom *> &Dofs,
-                       indexType meshID, indexType order) {
-  pointers.getGeometryData()
-      ->getFace(this->face)
-      ->getHDivDofs(pointers, Dofs, meshID, order, NodeTypes::displacement);
-}
-void Face::getHDivShapes(Face::ptrCol &pointers, indexType order,
-                         Types::Matrix22<prec> &jacobi,
-                         Types::Matrix2X<prec> &shape,
-                         Types::VectorX<prec> &dshape, prec xi,
-                         prec eta) {
-  Geometry::Faces *tempFace;
-  tempFace = pointers.getGeometryData()->getFace(this->face);
-  tempFace->getHDivShapes(pointers, order, shape, dshape, xi, eta);
-  shape = prec(0.5) / jacobi.determinant() * jacobi * shape;
-  dshape = dshape / jacobi.determinant() * prec(0.5);
+                       std::vector<DegreeOfFreedom *> &Dofs, indexType meshID,
+                       indexType order) {
+  m_face_runtime->getHDivFace()
+      ->getHDivDofs(Dofs, meshID, order, NodeTypes::displacement);
 }
 
 auto Face::getHDivShapes(PointerCollection &pointers, indexType order,
-                         Types::MatrixXX<prec> &jacobi,
+                         Types::Matrix22<prec> &jacobi,
                          IntegrationPoint &IntegrationPt)
     -> Geometry::HDivShapes {
-  auto geoFace = pointers.getGeometryData()->getFace(this->face);
-  auto shapes = geoFace->getHDivShapes(pointers, order, IntegrationPt);
-  shapes.shapes =
-      prec(0.5) / jacobi.determinant() * jacobi * shapes.shapes;
-  shapes.shapeDeriv /=  jacobi.determinant() * prec(0.5);
+  auto shapes = m_face_runtime->getHDivFace()->getHDivShapes(order,
+                                                             IntegrationPt);
+  shapes.shapes = prec(0.5) / jacobi.determinant() * jacobi * shapes.shapes;
+  shapes.shapeDeriv /= jacobi.determinant() * prec(0.5);
   return shapes;
 };
 
@@ -163,50 +117,48 @@ auto Face::getHDivShapes(PointerCollection &pointers, indexType order,
 void Face::setSpecialPlateShapes(PointerCollection &pointers, indexType meshid,
                                  indexType order) {
 
-  auto geoFace = pointers.getGeometryData()->getFace(this->face);
-  geoFace->setSpecialPlateShapes(pointers, meshid, order,
+  m_face_runtime->setSpecialPlateShapes(meshid, order,
                                  NodeTypes::displacement);
 };
 auto Face::getSpecialPlateDofs(PointerCollection &pointers, indexType meshID,
                                indexType order)
     -> std::vector<DegreeOfFreedom *> {
   std::vector<DegreeOfFreedom *> Dofs;
-  auto geoFace = pointers.getGeometryData()->getFace(this->face);
-  Dofs = geoFace->getSpecialPlateDofs(pointers, meshID, order,
+  Dofs = m_face_runtime->getSpecialPlateDofs(meshID, order,
                                       NodeTypes::displacement);
 
   return Dofs;
 };
 auto Face::getSpecialPlateShapes(PointerCollection &pointers, indexType order,
-                                 Types::MatrixXX<prec> &jacobi,
+                                 Types::Matrix22<prec> &jacobi,
                                  IntegrationPoint &intPoint)
     -> Geometry::SpecialPlateShapes {
-  // Geometry::SpecialPlateShapes shapes;
-  auto geoFace = pointers.getGeometryData()->getFace(this->face);
 
   // Abruf shapes in xi, eta
-  auto shapes = geoFace->getSpecialPlateShapes(pointers, intPoint, order);
+  auto shapes = m_face_runtime->getSpecialPlateShapes(intPoint, order);
 
   // TODO implemtierung der Transformation
 
   return shapes;
 };
-void Face::toParaviewAdapter(PointerCollection &ptrCol,
-                             vtkPlotInterface &catalyst,
-                             const ParaviewSwitch &ToDo) {}
+
+auto Face::getL2Shapes(ptrCol &pointers, indexType order,
+                       Types::Matrix22<prec> &jacobi,
+                       IntegrationPoint &IntegrationPt) -> Geometry::L2Shapes {
+
+  return m_face_runtime->getL2Shapes(order, IntegrationPt);
+}
 
 void Face::geometryToParaview(PointerCollection &pointers,
                               vtkPlotInterface &paraviewAdapter,
                               indexType mainMesh, indexType subMesh) {
-  auto temp = pointers.getGeometryData()->getFace(this->face);
-  temp->geometryToParaview(pointers, paraviewAdapter, mainMesh, subMesh);
+  m_face_runtime->geometryToParaview(paraviewAdapter, mainMesh, subMesh);
 };
 
 void Face::computeWeightsParaview(PointerCollection &pointers,
                                   vtkPlotInterface &paraviewAdapter,
                                   indexType mainMesh, indexType subMesh) {
-  auto temp = pointers.getGeometryData()->getFace(this->face);
-  temp->computeWeightsParaview(pointers, paraviewAdapter, mainMesh, subMesh);
+  m_face_runtime->computeWeightsParaview(paraviewAdapter, mainMesh, subMesh);
 }
 
 void Face::H1SolutionToParaview(PointerCollection &pointers,
@@ -214,9 +166,10 @@ void Face::H1SolutionToParaview(PointerCollection &pointers,
                                 indexType mainMesh, indexType subMesh,
                                 indexType meshId, indexType order,
                                 std::string name) {
-  auto geoElem = pointers.getGeometryData()->getFace(this->face);
-  geoElem->H1SolutionToParaview(pointers, paraviewAdapter, mainMesh, subMesh,
-                                meshId, order, name);
+  auto Dofs = m_face_runtime->getH1Face()->getH1Dofs(meshId, order);
+  Types::VectorX<prec> sol = pointers.getSolutionState()->getSolution(Dofs);
+  m_face_runtime->H1SolutionToParaview(paraviewAdapter, mainMesh, subMesh,
+                                order, sol, name);
 }
 
 void Face::projectDataToParaviewVertices(
@@ -224,10 +177,18 @@ void Face::projectDataToParaviewVertices(
     indexType mainMesh, indexType subMesh, indexType order,
     IntegrationPoint &IntegrationPt, Types::VectorX<prec> &data,
     indexType numberComponents, std::string name) {
-  auto geoElem = pointers.getGeometryData()->getFace(this->face);
-  geoElem->projectDataToParaviewVertices(pointers, paraviewAdapter, mainMesh,
+  m_face_runtime->projectDataToParaviewVertices(paraviewAdapter, mainMesh,
                                          subMesh, order, IntegrationPt, data,
                                          numberComponents, name);
+}
+
+void Face::getL2Dofs(ptrCol &pointers, std::vector<DegreeOfFreedom *> &Dofs,
+                     indexType meshID, indexType order) {
+  m_face_runtime->getL2Dofs(Dofs, meshID, order);
+}
+
+void Face::setL2Shapes(ptrCol &pointers, indexType meshid, indexType order) {
+  m_face_runtime->setL2Shapes(meshid, order, NodeTypes::displacement);
 }
 
 } // namespace HierAMuS::FiniteElement

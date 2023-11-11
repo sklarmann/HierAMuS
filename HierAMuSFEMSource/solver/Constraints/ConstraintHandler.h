@@ -72,11 +72,11 @@ private:
 
   void LinkEdges(PointerCollection &pointers, indexType meshId,
                  indexType masterEdge, indexType slaveEdge, indexType masterDof,
-                 indexType slaveDof, indexType factor, indexType difference, bool reorient);
+                 indexType slaveDof, prec factor, prec difference, bool reorient);
 
   void LinkFaces(PointerCollection &pointers, indexType meshId,
                  indexType masterFace, indexType slaveFace, indexType masterDof,
-                 indexType slaveDof, indexType factor, indexType difference, bool reorient);
+                 indexType slaveDof, prec factor, prec difference, bool reorient);
 
   Types::SparseMatrix<prec, indexType> m_A, m_ATranspose;
   Types::SparseVector<prec, indexType> m_dB, m_NewtonInc;

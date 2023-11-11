@@ -4,13 +4,11 @@
 
 set(SOURCEFILES ${SOURCEFILES} 
 					 #${CMAKE_CURRENT_SOURCE_DIR}/Userconstants.cpp
-					 ${CMAKE_CURRENT_SOURCE_DIR}/Plane.cpp
 					 ${CMAKE_CURRENT_SOURCE_DIR}/MatrixOperations.cpp
 		PARENT_SCOPE)
 
 set(HEADERS ${HEADERS} 
 					 #${CMAKE_CURRENT_SOURCE_DIR}/Userconstants.h
-					 ${CMAKE_CURRENT_SOURCE_DIR}/Plane.h
 					 #${CMAKE_CURRENT_SOURCE_DIR}/EigenLab.h
 					 ${CMAKE_CURRENT_SOURCE_DIR}/MatrixOperations.h
 		             ${CMAKE_CURRENT_SOURCE_DIR}/geometry.h

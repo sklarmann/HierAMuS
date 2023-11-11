@@ -11,11 +11,11 @@
 
 namespace py = pybind11;
 
-#include "geometry/LinearEdge.h"
+#include "geometry/Edges/LinearEdgeData.h"
 
-class PyLinearEdge: public HierAMuS::Geometry::LinearEdge {
+class PyLinearEdge: public HierAMuS::Geometry::LinearEdgeData {
 public:
-  using HierAMuS::Geometry::LinearEdge::LinearEdge;
+  using HierAMuS::Geometry::LinearEdgeData::LinearEdgeData;
 
   //void renew() {
   //  PYBIND11_OVERRIDE(void, HierAMuS::PointerCollection, renew);
@@ -24,11 +24,11 @@ public:
 
 void GeomLinearEdgeToPybind(py::module &m)
 {
-  py::class_<HierAMuS::Geometry::LinearEdge,HierAMuS::Geometry::Edges,
-			 HierAMuS::Geometry::Base,
+  py::class_<HierAMuS::Geometry::LinearEdgeData,HierAMuS::Geometry::EdgesData,
+             HierAMuS::Geometry::GeometryBaseData,
 		     PyLinearEdge,
-             std::shared_ptr<HierAMuS::Geometry::LinearEdge>>(m, "LinearEdge")
+             std::shared_ptr<HierAMuS::Geometry::LinearEdgeData>>(m, "LinearEdge")
       .def(py::init<>())
-      .def("setVerts", &HierAMuS::Geometry::LinearEdge::setVerts)
+      .def("setVerts", &HierAMuS::Geometry::LinearEdgeData::setVerts)
 	;
 }

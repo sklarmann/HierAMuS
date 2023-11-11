@@ -15,6 +15,7 @@
 #include "finiteElements/GenericFiniteElement.h"
 #include "finiteElements/beamInterfaceElement3D.h"
 #include "materials/GenericMaterialFormulation.h"
+#include "materials/Material.h"
 
 #include "math/MatrixOperations.h"
 
@@ -25,7 +26,7 @@ namespace HierAMuS::Elementformulations {
 
 
 EL302_BeamCoupling3D::EL302_BeamCoupling3D(PointerCollection *ptrCol)
-    : GenericElementFormulation(ptrCol) {}
+    : GenericElementFormulationInterface(ptrCol) {}
 
 EL302_BeamCoupling3D::~EL302_BeamCoupling3D() {}
 
@@ -48,7 +49,7 @@ void EL302_BeamCoupling3D::readData(PointerCollection &pointers,
   }
 
   
-  auto Log = pointers.getSPDLogger();
+  auto &Log = pointers.getSPDLogger();
 
   Log.info("\n{:-<100}\n"
                 "*   Element 302, specified Options\n"
@@ -70,10 +71,10 @@ void EL302_BeamCoupling3D::readData(PointerCollection &pointers,
   this->messageUnprocessed(pointers, list, "EL302_BeamCoupling3D");
 }
 
-void EL302_BeamCoupling3D::setDegreesOfFreedom(PointerCollection& pointers, FiniteElement::GenericFiniteElement *elem)
-{
+void EL302_BeamCoupling3D::setDegreesOfFreedom(
+    PointerCollection &pointers, FiniteElement::beamInterfaceElement3D &elem) {
   FiniteElement::beamInterfaceElement3D *interfaceElement =
-      dynamic_cast<FiniteElement::beamInterfaceElement3D *>(elem);
+      dynamic_cast<FiniteElement::beamInterfaceElement3D *>(&elem);
 
   interfaceElement->setH1Shapes(pointers, m_intOrderDisp, m_meshIdDisp,
                                 m_meshIdRot);
@@ -81,16 +82,15 @@ void EL302_BeamCoupling3D::setDegreesOfFreedom(PointerCollection& pointers, Fini
 
 }
 
-void EL302_BeamCoupling3D::AdditionalOperations(PointerCollection& pointers, FiniteElement::GenericFiniteElement *elem)
+void EL302_BeamCoupling3D::AdditionalOperations(PointerCollection& pointers, FiniteElement::beamInterfaceElement3D &elem)
 {
-  FiniteElement::beamInterfaceElement3D *interfaceElement =
-      dynamic_cast<FiniteElement::beamInterfaceElement3D *>(elem);
+
 
   if (m_warpBounVerts.size()!=0)
-    interfaceElement->setWarpDofConstraintVertices(m_warpBounVerts);
-  interfaceElement->computeWarpingShapes(pointers);
+    elem.setWarpDofConstraintVertices(m_warpBounVerts);
+  elem.computeWarpingShapes(pointers);
 
-  interfaceElement->print(pointers);
+  elem.print(pointers);
   
 
 }
@@ -104,13 +104,11 @@ auto EL302_BeamCoupling3D::getDofs(PointerCollection& pointers, FiniteElement::G
   ;
 }
 
-void EL302_BeamCoupling3D::setTangentResidual(PointerCollection& pointers,
-                                              FiniteElement::GenericFiniteElement *elem,
+void EL302_BeamCoupling3D::setTangentResidual(PointerCollection& pointers, FiniteElement::beamInterfaceElement3D &elem,
                                               Eigen::Matrix<prec, Eigen::Dynamic, Eigen::Dynamic> &stiffness,
                                               Eigen::Matrix<prec, Eigen::Dynamic, 1> &residual, std::vector<DegreeOfFreedom *> &Dofs)
 {
-  FiniteElement::beamInterfaceElement3D *interfaceElement =
-      dynamic_cast<FiniteElement::beamInterfaceElement3D *>(elem);
+  FiniteElement::beamInterfaceElement3D *interfaceElement = &elem;
 
   switch(this->m_mode){
     case 1:
@@ -143,19 +141,19 @@ auto EL302_BeamCoupling3D::getNumberOfIntergrationPoints(
 }
 
 void EL302_BeamCoupling3D::toParaviewAdaper(PointerCollection &pointers,
-                                FiniteElement::GenericFiniteElement *elem,
+                                FiniteElement::beamInterfaceElement3D &elem,
                                 vtkPlotInterface &paraviewAdapter,
                                 ParaviewSwitch control)
 {
 
-  int matNum = static_cast<int>(elem->getMaterial()->getNumber());
+  int matNum = static_cast<int>(elem.getMaterial()->getNumber());
 
   switch(control) {
   case ParaviewSwitch::Mesh: {
-    elem->geometryToParaview(pointers, paraviewAdapter, 0, matNum);
+    elem.geometryToParaview(pointers, paraviewAdapter, 0, matNum);
   } break;
   case ParaviewSwitch::Solution: {
-    elem->H1SolutionToParaview(pointers,paraviewAdapter,0,matNum,m_meshIdDisp,m_intOrderDisp,paraviewNames::DisplacementName());
+    elem.H1SolutionToParaview(pointers,paraviewAdapter,0,matNum,m_meshIdDisp,m_intOrderDisp,paraviewNames::DisplacementName());
   } break;
   default:
     break;

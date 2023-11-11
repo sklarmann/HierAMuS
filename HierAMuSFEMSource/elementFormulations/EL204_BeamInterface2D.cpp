@@ -10,10 +10,8 @@
 
 #include <control/HandlingStructs.h>
 #include <control/OutputHandler.h>
+#include "control/ParameterList.h"
 #include <pointercollection/pointercollection.h>
-
-#include <equations/DegreeOfFreedom.h>
-#include <equations/GenericNodes.h>
 
 #include <finiteElements/GenericFiniteElement.h>
 #include <finiteElements/beamInterfaceElement2D.h>
@@ -29,7 +27,7 @@
 namespace HierAMuS::Elementformulations {
 
 EL204_BeamInterface2D::EL204_BeamInterface2D(PointerCollection *ptrCol)
-    : GenericElementFormulation(ptrCol) {}
+    : GenericElementFormulationInterface(ptrCol) {}
 
 EL204_BeamInterface2D::~EL204_BeamInterface2D() = default;
 
@@ -47,7 +45,7 @@ void EL204_BeamInterface2D::readData(PointerCollection &pointers,
   this->thick = list.getPrecVal("thick");
 
 
-  auto Log = pointers.getSPDLogger();
+  auto &Log = pointers.getSPDLogger();
 
   Log.info("\n{:-<100}\n"
                 "*   Element 204, specified Options\n"
@@ -64,9 +62,9 @@ void EL204_BeamInterface2D::readData(PointerCollection &pointers,
 }
 
 void EL204_BeamInterface2D::setDegreesOfFreedom(
-  PointerCollection& pointers, FiniteElement::GenericFiniteElement *elem) {
+    PointerCollection &pointers, FiniteElement::beamInterfaceElement2D &elem) {
 
-  auto *ee = dynamic_cast<FiniteElement::beamInterfaceElement2D *>(elem);
+  auto *ee = dynamic_cast<FiniteElement::beamInterfaceElement2D *>(&elem);
   // ee->setShapes(*this->ptrCol, this->meshIdDisp, this->meshIdWarp,
   // this->meshIdRot, this->intOrder);
 
@@ -105,8 +103,8 @@ auto EL204_BeamInterface2D::getDofs(PointerCollection& pointers, FiniteElement::
 
 
 void EL204_BeamInterface2D::AdditionalOperations(
-  PointerCollection& pointers, FiniteElement::GenericFiniteElement *elem) {
-  auto *ee = dynamic_cast<FiniteElement::beamInterfaceElement2D *>(elem);
+  PointerCollection& pointers, FiniteElement::beamInterfaceElement2D &elem) {
+  auto *ee = dynamic_cast<FiniteElement::beamInterfaceElement2D *>(&elem);
 
   // Geometry Set up
   ee->computeGeometry(pointers);
@@ -138,10 +136,10 @@ void EL204_BeamInterface2D::AdditionalOperations(
 }
 
 void EL204_BeamInterface2D::setTangentResidual(
-  PointerCollection& pointers, FiniteElement::GenericFiniteElement *elem,
+    PointerCollection &pointers, FiniteElement::beamInterfaceElement2D &elem,
   Types::MatrixXX<prec> &stiffness, Types::VectorX<prec> &residual, std::vector<DegreeOfFreedom *> &Dofs) {
 
-  auto *ee = dynamic_cast<FiniteElement::beamInterfaceElement2D *>(elem);
+  auto *ee = dynamic_cast<FiniteElement::beamInterfaceElement2D *>(&elem);
   indexType numEdges = ee->getNumberOfEdges(pointers);
 
   Types::Matrix33<prec> cmat;
@@ -168,7 +166,7 @@ void EL204_BeamInterface2D::setTangentResidual(
     cmat *= this->thick;
   }
 
-  IntegrationPoints GP = HierAMuS::PointerCollection::getIntegrationPoints(-1);
+  IntegrationPoints GP = IntegrationPointsManagement::getIntegrationsPoints(-1);
   GP.setTypeOrder(IntegrationType::Gauss2D, this->intOrder + 1);
 
   Types::VectorX<prec> WarpingShapeX, WarpingShapeXY, WarpingShapeY,
@@ -280,7 +278,7 @@ void EL204_BeamInterface2D::setTangentResidual(
 auto EL204_BeamInterface2D::getNumberOfIntergrationPoints(
     PointerCollection &pointers, FiniteElement::GenericFiniteElement *elem)
     -> indexType {
-  IntegrationPoints GP = HierAMuS::PointerCollection::getIntegrationPoints(-1);
+  IntegrationPoints GP = IntegrationPointsManagement::getIntegrationsPoints(-1);
   GP.setTypeOrder(IntegrationType::Gauss2D, this->intOrder + 1);
   auto *ee = dynamic_cast<FiniteElement::beamInterfaceElement2D *>(elem);
   indexType numEdges = ee->getNumberOfEdges(pointers);
@@ -288,7 +286,7 @@ auto EL204_BeamInterface2D::getNumberOfIntergrationPoints(
 }
 
 void EL204_BeamInterface2D::toParaviewAdaper(
-    PointerCollection &pointers, FiniteElement::GenericFiniteElement *elem,
+    PointerCollection &pointers, FiniteElement::beamInterfaceElement2D &elem,
     vtkPlotInterface &paraviewAdapter, ParaviewSwitch control)
 {
   pointers.getSPDLogger().warn("Plot functionality for EL204_BeamInterface2D not implemented!");

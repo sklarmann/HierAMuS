@@ -4,39 +4,37 @@
 
 
 
-#include <elementFormulations/EL300_Solid3DLinear.h>
-#include <pointercollection/pointercollection.h>
+#include "elementFormulations/EL300_Solid3DLinear.h"
+#include "pointercollection/pointercollection.h"
 
-#include <control/HandlingStructs.h>
-#include <control/OutputHandler.h>
-
-#include <equations/DegreeOfFreedom.h>
-#include <equations/GenericNodes.h>
-#include <equations/NodeSet.h>
-#include <equations/Nodetypes.h>
-
-#include <finiteElements/GenericFiniteElement.h>
-
-#include <geometry/Base.h>
-#include <geometry/Volumes.h>
+#include "control/HandlingStructs.h"
+#include "control/OutputHandler.h"
 
 
-#include <materials/GenericMaterialFormulation.h>
+
+#include "finiteElements/Volume.h"
+
+
+
+#include "materials/GenericMaterialFormulation.h"
 
 #include "shapefunctions/IntegrationsPoints/dataClasses/GaussPoints.h"
 
-#include <elementFormulations/GenericElementFormulation.h>
-#include <solver/GenericSolutionState.h>
+#include "elementFormulations/GenericElementFormulation.h"
+#include "solver/GenericSolutionState.h"
 
-#include <types/MatrixTypes.h>
+#include "types/MatrixTypes.h"
+#include "geometry/GeometryBaseData.h"
 
-#include <Eigen/Eigenvalues>
+#include "Eigen/Eigenvalues"
+
+#include "control/ParameterList.h"
 
 namespace HierAMuS {
 namespace Elementformulations {
 
 EL300_Solid3DLinear::EL300_Solid3DLinear(PointerCollection *ptrCol)
-    : GenericElementFormulation(ptrCol) {}
+    : GenericElementFormulationInterface(ptrCol) {}
 
 EL300_Solid3DLinear::~EL300_Solid3DLinear() {}
 
@@ -46,7 +44,7 @@ void EL300_Solid3DLinear::readData(PointerCollection &pointers,
   this->intOrderDisp = list.getIndexVal("disporder");
   this->mode = list.getIndexVal("mode");
   
-  auto Log = pointers.getSPDLogger();
+  auto &Log = pointers.getSPDLogger();
 
   Log.info("\n{:-<100}\n"
                 "*   Element 300, specified Options\n"
@@ -62,22 +60,15 @@ void EL300_Solid3DLinear::readData(PointerCollection &pointers,
   this->messageUnprocessed(pointers, list, "EL300_Solid3DLinear");
 }
 
-void EL300_Solid3DLinear::setDegreesOfFreedom(
-  PointerCollection& pointers, FiniteElement::GenericFiniteElement *elem) {
+void EL300_Solid3DLinear::setDegreesOfFreedom(PointerCollection &pointers,
+                                              FiniteElement::Volume &elem) {
 
-  elem->setH1Shapes(pointers, this->meshIdDisp, this->intOrderDisp);
+  elem.setH1Shapes(pointers, this->meshIdDisp, this->intOrderDisp);
 }
 
 void EL300_Solid3DLinear::AdditionalOperations(
-  PointerCollection& pointers, FiniteElement::GenericFiniteElement *elem) {
-  auto vol = elem->getVolume(pointers, 0);
-  std::vector<indexType> faceNums;
-  vol->getFaces(faceNums);
-  for (auto i : faceNums) {
-    auto face = pointers.getGeometryData()->getFace(i);
-    auto nodes = face->getH1NodesInternal(pointers, this->meshIdDisp,
-                                          this->intOrderDisp);
-  }
+  PointerCollection& pointers, FiniteElement::Volume &elem) {
+
 }
 
 auto EL300_Solid3DLinear::getDofs(PointerCollection& pointers, FiniteElement::GenericFiniteElement *elem) -> std::vector<DegreeOfFreedom*>{
@@ -88,7 +79,7 @@ auto EL300_Solid3DLinear::getDofs(PointerCollection& pointers, FiniteElement::Ge
 }
 
 void EL300_Solid3DLinear::setTangentResidual(
-  PointerCollection& pointers, FiniteElement::GenericFiniteElement *elem,
+  PointerCollection& pointers, FiniteElement::Volume &elem,
   Types::MatrixXX<prec> &stiffness, Types::VectorX<prec> &residual, std::vector<DegreeOfFreedom *> &Dofs) {
 
   switch (this->mode) {
@@ -104,15 +95,13 @@ void EL300_Solid3DLinear::setTangentResidual(
 
 void EL300_Solid3DLinear::setTangentResidualLinear(
   PointerCollection& pointers,
-  FiniteElement::GenericFiniteElement *elem,
+  FiniteElement::Volume &elem,
   Eigen::Matrix<prec, Eigen::Dynamic, Eigen::Dynamic> &stiffness,
   Eigen::Matrix<prec, Eigen::Dynamic, 1> &residual, std::vector<DegreeOfFreedom *> &Dofs) {
 
-  Types::MatrixXX<prec> Bmat;
-  Types::VectorX<prec> solution;
-
+  
   Dofs.clear();
-  elem->getH1Dofs(pointers, Dofs, this->meshIdDisp, this->intOrderDisp);
+  elem.getH1Dofs(pointers, Dofs, this->meshIdDisp, this->intOrderDisp);
 
   indexType numDofs = static_cast<indexType>(Dofs.size());
 
@@ -122,27 +111,28 @@ void EL300_Solid3DLinear::setTangentResidualLinear(
   residual.resize(numDofs);
   residual.setZero();
 
-  elem->getSolution(pointers, Dofs, solution);
+  //elem.getSolution(pointers, Dofs, solution);
+  Types::VectorX<prec> solution(elem.getSolution(pointers, Dofs));
 
-  Bmat.resize(6, numDofs);
-  Bmat.setZero();
 
-  auto GP = elem->getIntegrationPoints(pointers);
+  Types::Matrix6X<prec> Bmat = Types::Matrix6X<prec>::Zero(6,numDofs);
+
+  auto GP = elem.getIntegrationPoints(pointers);
   GP.setOrder(this->intOrderDisp * 2);
 
-  auto Hist = elem->getHistoryDataIterator(pointers);
+  auto Hist = elem.getHistoryDataIterator(pointers);
 
   Materials::MaterialTransferData materialData;
   materialData.historyData = &Hist;
   //indexType cc = 0;
-  for (auto i : GP) {
-    auto jaco = elem->getJacobian(pointers, i);
-    auto shapes = elem->getH1Shapes(pointers, this->intOrderDisp, jaco, i);
+  for (auto &i : GP) {
+    auto jaco = elem.getJacobian(pointers, i);
+    auto shapes = elem.getH1Shapes(pointers, this->intOrderDisp, jaco, i);
 
     auto Bmat = this->getLinearBMatrix(shapes);
 
     materialData.strains = Bmat * solution;
-    elem->getMaterialFormulation(pointers)->getMaterialData(pointers, materialData,i);
+    elem.getMaterialFormulation(pointers)->getMaterialData(pointers, materialData,i);
 
     auto da = i.weight * jaco.determinant();
     stiffness += Bmat.transpose() * materialData.materialTangent * Bmat * da;
@@ -154,30 +144,30 @@ void EL300_Solid3DLinear::setTangentResidualLinear(
 
 void EL300_Solid3DLinear::setTangentResidualNonLinear(
   PointerCollection& pointers,
-  FiniteElement::GenericFiniteElement *elem,
+  FiniteElement::Volume &elem,
   Eigen::Matrix<prec, Eigen::Dynamic, Eigen::Dynamic> &stiffness,
   Eigen::Matrix<prec, Eigen::Dynamic, 1> &residual, std::vector<DegreeOfFreedom *> &Dofs) {
 
   Dofs.clear();
-  elem->getH1Dofs(pointers, Dofs, this->meshIdDisp, this->intOrderDisp);
-  auto solution = elem->getSolution(pointers, Dofs);
+  elem.getH1Dofs(pointers, Dofs, this->meshIdDisp, this->intOrderDisp);
+  auto solution = elem.getSolution(pointers, Dofs);
 
   stiffness.resize(Dofs.size(), Dofs.size());
   residual.resize(Dofs.size());
   stiffness.setZero();
   residual.setZero();
 
-  auto GP = elem->getIntegrationPoints(pointers);
+  auto GP = elem.getIntegrationPoints(pointers);
   GP.setOrder(this->intOrderDisp * 2);
 
-  auto Hist = elem->getHistoryDataIterator(pointers);
+  auto Hist = elem.getHistoryDataIterator(pointers);
 
   Materials::MaterialTransferData materialData;
   materialData.historyData = &Hist;
   materialData.strains.resize(6);
   for (auto i : GP) {
-    auto jaco = elem->getJacobian(pointers, i);
-    auto shapes = elem->getH1Shapes(pointers, this->intOrderDisp, jaco, i);
+    auto jaco = elem.getJacobian(pointers, i);
+    auto shapes = elem.getH1Shapes(pointers, this->intOrderDisp, jaco, i);
     auto F = this->getDeformationGradient(shapes, solution);
     auto E =
         (F.transpose() * F - Types::Matrix33<prec>::Identity()) * prec(0.5);
@@ -187,7 +177,7 @@ void EL300_Solid3DLinear::setTangentResidualNonLinear(
     materialData.strains(3) = E(0, 1) * prec(2);
     materialData.strains(4) = E(0, 2) * prec(2);
     materialData.strains(5) = E(1, 2) * prec(2);
-    elem->getMaterialFormulation(pointers)->getMaterialData(pointers, materialData,i);
+    elem.getMaterialFormulation(pointers)->getMaterialData(pointers, materialData,i);
     auto BMatrix = this->getNonLinearBMatrix(shapes, F);
 
     auto da = i.weight * jaco.determinant();
@@ -245,10 +235,8 @@ auto EL300_Solid3DLinear::getNonLinearBMatrix(Geometry::H1Shapes &shapes,
 
 auto EL300_Solid3DLinear::getLinearBMatrix(Geometry::H1Shapes &shapes)
     -> Types::Matrix6X<prec> {
-  Types::Matrix6X<prec> Bmat;
   indexType nshapes = shapes.shapes.rows();
-  Bmat.resize(6, nshapes * 3);
-  Bmat.setZero();
+  Types::Matrix6X<prec> Bmat = Types::Matrix6X<prec>::Zero(6, nshapes * 3);
   for (auto l = 0; l < nshapes; ++l) {
     Bmat(0, l * 3) = shapes.shapeDeriv(0, l);
     Bmat(1, l * 3 + 1) = shapes.shapeDeriv(1, l);
@@ -270,10 +258,9 @@ auto EL300_Solid3DLinear::getLinearBMatrix(Geometry::H1Shapes &shapes)
 auto EL300_Solid3DLinear::getGeometricMatrix(Geometry::H1Shapes &shapes,
                                             Types::VectorX<prec> &stress)
     -> Types::MatrixXX<prec> {
-  Types::MatrixXX<prec> G;
   indexType nshapes = shapes.shapes.rows();
-  G.resize(nshapes * 3, nshapes * 3);
-  G.setZero();
+  Types::MatrixXX<prec> G =
+      Types::MatrixXX<prec>::Zero(nshapes * 3, nshapes * 3);
 
   for (auto i = 0; i < nshapes; ++i) {
     for (auto j = 0; j < nshapes; ++j) {
@@ -322,39 +309,39 @@ auto EL300_Solid3DLinear::getBTCBLinear(Geometry::H1Shapes &shapes,Types::Matrix
 }
 
 void EL300_Solid3DLinear::toParaviewAdaper(
-    PointerCollection &pointers, FiniteElement::GenericFiniteElement *elem,
+    PointerCollection &pointers, FiniteElement::Volume &elem,
     vtkPlotInterface &paraviewAdapter, ParaviewSwitch control) {
-  int matNum = static_cast<int>(elem->getMaterial()->getNumber());
+  int matNum = static_cast<int>(elem.getMaterial()->getNumber());
   switch (control) {
   case ParaviewSwitch::Mesh: {
-    elem->geometryToParaview(pointers, paraviewAdapter, 0, matNum);
+    elem.geometryToParaview(pointers, paraviewAdapter, 0, matNum);
 
   } break;
   case ParaviewSwitch::Solution: {
-    elem->H1SolutionToParaview(pointers, paraviewAdapter, 0, matNum,
+    elem.H1SolutionToParaview(pointers, paraviewAdapter, 0, matNum,
                                this->meshIdDisp, this->intOrderDisp,
                                paraviewNames::DisplacementName());
   } break;
   case ParaviewSwitch::Weights: {
-    elem->computeWeightsParaview(pointers, paraviewAdapter, 0, matNum);
+    elem.computeWeightsParaview(pointers, paraviewAdapter, 0, matNum);
   } break;
   case ParaviewSwitch::ProjectedValues: {
-    auto GP = elem->getIntegrationPoints(pointers);
+    auto GP = elem.getIntegrationPoints(pointers);
     GP.setOrder(this->intOrderDisp * 2);
 
-    auto Hist = elem->getHistoryDataIterator(pointers);
+    auto Hist = elem.getHistoryDataIterator(pointers);
 
     Materials::MaterialTransferData materialData;
     materialData.historyData = &Hist;
     materialData.strains.resize(6);
     std::vector<DegreeOfFreedom *> Dofs;
 
-    elem->getH1Dofs(pointers, Dofs, this->meshIdDisp, this->intOrderDisp);
-    auto solution = elem->getSolution(pointers, Dofs);
+    elem.getH1Dofs(pointers, Dofs, this->meshIdDisp, this->intOrderDisp);
+    auto solution = elem.getSolution(pointers, Dofs);
 
     for (auto i : GP) {
-      auto jaco = elem->getJacobian(pointers, i);
-      auto shapes = elem->getH1Shapes(pointers, this->intOrderDisp, jaco, i);
+      auto jaco = elem.getJacobian(pointers, i);
+      auto shapes = elem.getH1Shapes(pointers, this->intOrderDisp, jaco, i);
 
       if (this->mode == 1) {
         auto BMat = this->getLinearBMatrix(shapes);
@@ -371,11 +358,11 @@ void EL300_Solid3DLinear::toParaviewAdaper(
         materialData.strains(5) = E(1, 2);
       }
 
-      elem->getMaterialFormulation(pointers)->getMaterialData(pointers, materialData,i);
-      elem->projectDataToParaviewVertices(
+      elem.getMaterialFormulation(pointers)->getMaterialData(pointers, materialData,i);
+      elem.projectDataToParaviewVertices(
           pointers, paraviewAdapter, 0, matNum, this->intOrderDisp, i,
           materialData.strains, 6, paraviewNames::strainName());
-      elem->projectDataToParaviewVertices(
+      elem.projectDataToParaviewVertices(
           pointers, paraviewAdapter, 0, matNum, this->intOrderDisp, i,
           materialData.stresses, 6, paraviewNames::stressName());
       Hist.next();

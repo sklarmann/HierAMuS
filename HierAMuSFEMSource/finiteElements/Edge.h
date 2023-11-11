@@ -4,10 +4,7 @@
 
 #pragma once
 
-#include <forwarddeclaration.h>
-
-
-#include <finiteElements/GenericFiniteElement.h>
+#include <finiteElements/GenericFiniteElementInterface.h>
 
 #include <Eigen/Dense>
 
@@ -19,17 +16,21 @@ template <class bla> class vtkSmartPointer;
 
 class vtkCell;
 
+namespace HierAMuS::Geometry {
+class EdgesRuntime;
+}
+
 namespace HierAMuS::FiniteElement {
 
-class Edge : public GenericFiniteElement {
+class Edge : public GenericFiniteElementInterface<Edge> {
   using ptrCol = PointerCollection;
 
 public:
   Edge()= default;;
   ~Edge() override;
-  auto getElementType() -> Elementtypes override {
-    return Elementtypes::Edge;
-  };
+  auto getElementType() -> Elementtypes override;
+
+  void set_pointers(PointerCollection &pointers) override;
 
   void setAllNodeBoundaryConditionMeshId(ptrCol &pointers,
                                          indexType meshId,
@@ -42,8 +43,8 @@ public:
   auto getType() -> Elementtypes override { return Elementtypes::Edge; };
   auto getVertexId(ptrCol &pointers, indexType num) -> indexType override;
   // std::vector<indexType> getVertexIds();
-  auto getVertex(ptrCol &pointers, indexType localNumber) -> Geometry::Vertex & override;
-  auto getEdge(ptrCol &pointers, indexType localNumber) -> Geometry::Edges & override;
+  auto getVertex(ptrCol &pointers, indexType localNumber) -> Geometry::VertexData & override;
+  auto getEdge(ptrCol &pointers, indexType localNumber) -> Geometry::EdgesData & override;
   
 
   // Integration Points
@@ -54,45 +55,43 @@ public:
   auto getNumberOfEdges(PointerCollection& pointers) -> indexType override { return 1; };
 
   // Geometric mapping
-  void getJacobian(ptrCol &pointers, prec &jacobi, prec xsi) override;
   auto getJacobian(ptrCol &pointers, IntegrationPoint &IntegrationPt)
-      -> Types::MatrixXX<prec> override;
+      -> prec;
 
 
   // H1 Shape Functions
   void setH1Shapes(ptrCol &pointers, indexType meshID, indexType order) override;
   void getH1Dofs(ptrCol &pointers, std::vector<DegreeOfFreedom *> &Dofs,
                  indexType meshID, indexType order) override;
-  void getH1Shapes(ptrCol &pointers, indexType order, prec jacobi,
-                   Types::VectorX<prec> &shape,
-                   Types::VectorX<prec> &shapeDerivative, prec xsi) override;
-
+  
   auto getH1Shapes(ptrCol &pointers, indexType order,
-                           Types::MatrixXX<prec> &jacobi,
+                           prec jacobi,
                            IntegrationPoint &IntegrationPt)
-      -> Geometry::H1Shapes override;
+      -> Geometry::H1Shapes;
 
   
   // Paraview
   void geometryToParaview(PointerCollection &pointers,
                           vtkPlotInterface &paraviewAdapter, indexType mainMesh,
-                          indexType subMesh) override;
+                          indexType subMesh);
   void computeWeightsParaview(PointerCollection &pointers,
                               vtkPlotInterface &paraviewAdapter,
-                              indexType mainMesh, indexType subMesh) override;
+                              indexType mainMesh, indexType subMesh);
   void H1SolutionToParaview(PointerCollection &pointers,
                             vtkPlotInterface &paraviewAdapter,
                             indexType mainMesh, indexType subMesh,
                             indexType meshId, indexType order,
-                            std::string name) override;
+                            std::string name);
   void projectDataToParaviewVertices(
       PointerCollection &pointers, vtkPlotInterface &paraviewAdapter,
       indexType mainMesh, indexType subMesh, indexType order,
       IntegrationPoint &IntegrationPt, Types::VectorX<prec> &data,
-      indexType numberComponents, std::string name) override;
+      indexType numberComponents, std::string name);
 
 private:
   indexType m_edge;
+  Geometry::EdgesData *m_edge_pointer;
+  std::shared_ptr<Geometry::EdgesRuntime> m_edge_runtime;
 };
 
 } // namespace HierAMuS

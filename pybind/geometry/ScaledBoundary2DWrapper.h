@@ -12,14 +12,14 @@
 
 namespace py = pybind11;
 
-#include "geometry/ScaledBoundary2D.h"
+#include "geometry/Faces/ScaledBoundary2DData.h"
 
 
 namespace HierAMuS {
 namespace Geometry {
-class PyScaledBoundary2D : public ScaledBoundary2D {
+class PyScaledBoundary2D : public ScaledBoundary2DData {
 public:
-  using ScaledBoundary2D::ScaledBoundary2D;
+  using ScaledBoundary2DData::ScaledBoundary2DData;
 
   // void renew() {
   //  PYBIND11_OVERRIDE(void, HierAMuS::PointerCollection, renew);
@@ -33,7 +33,8 @@ public:
   void registerFunctions();
 
 private:
-  typedef py::class_<ScaledBoundary2D, PyScaledBoundary2D, Faces, Base, std::shared_ptr<ScaledBoundary2D>>
+  typedef py::class_<ScaledBoundary2DData, PyScaledBoundary2D, FacesData,
+                     GeometryBaseData, std::shared_ptr<ScaledBoundary2DData>>
       pw;
   pw temp;
 };

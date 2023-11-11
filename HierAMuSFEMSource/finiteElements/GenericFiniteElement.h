@@ -6,11 +6,9 @@
 
 #pragma once
 
-#include <equations/DofStatus.h>
-#include <finiteElements/ElementTypes.h>
-#include <forwarddeclaration.h>
-#include <geometry/GeometryData.h>
-#include <materials/Material.h>
+
+
+#include "Nodetypes.h"
 
 #include <Eigen/Dense>
 #include <map>
@@ -21,9 +19,9 @@
 #include <plot/vtkplotClass.h>
 #include <plot/vtkplotClassBase.h>
 
-#include "equations/GenericNodes.h"
-#include "geometry/Base.h"
-#include "pointercollection/pointercollection.h"
+
+#include "geometry/GeometryShape.h"
+
 #include "shapefunctions/IntegrationsPoints/IntegrationPoints.h"
 
 #include "NormTypes.h"
@@ -32,13 +30,25 @@
 #include "solver/HistoryDataNew/HistoryDataIterator.h"
 #include "solver/HistoryDataNew/HistoryDataSetup.h"
 
+#include "finiteElements/ElementTypes.h"
+
 template <class bla> class vtkSmartPointer;
 
 class vtkCell;
 
 class managementClass;
 
+namespace HierAMuS::Materials {
+class Material;
+}
+
+namespace HierAMuS::Geometry {
+class FacesData;
+class VolumesData;
+}
+
 namespace HierAMuS::FiniteElement {
+
 
 class GenericFiniteElement {
   using ptrCol = HierAMuS::PointerCollection;
@@ -49,6 +59,8 @@ public:
   virtual auto getElementType() -> Elementtypes {
     return Elementtypes::Generic;
   };
+
+  virtual void set_pointers(PointerCollection &pointers) = 0;
 
 
   // Local Basis
@@ -66,38 +78,31 @@ public:
 
   virtual auto getIntegrationPoints(ptrCol &pointers) -> IntegrationPoints;
 
-  void setId(indexType id) { this->id = id; };
-  auto getId() -> indexType { return this->id; };
-  void setMatrial(Materials::Material *in) { this->material = in; };
+  void setId(indexType id) { this->m_id = id; };
+  auto getId() -> indexType { return this->m_id; };
+  void setMatrial(Materials::Material *in) { this->m_material = in; };
   virtual void setMaterialPerSubElement(std::vector<indexType> &materialNumbers){};
   auto getMaterial() -> HierAMuS::Materials::Material * {
-    return this->material;
+    return this->m_material;
   };
-  auto getMaterialFormulation(PointerCollection& pointers)
-  -> std::shared_ptr<HierAMuS::Materials::GenericMaterialFormulation> {
-    return this->material->getMaterialFormulation(pointers);
-  };
+  auto getMaterialFormulation(PointerCollection &pointers)
+      -> std::shared_ptr<HierAMuS::Materials::GenericMaterialFormulation>;
 
-  virtual auto getMaterialFormulation(PointerCollection& pointers, IntegrationPoint &ip)
-  -> std::shared_ptr<HierAMuS::Materials::GenericMaterialFormulation> {
-    return this->material->getMaterialFormulation(pointers);
-  };
-  auto getMaterialId() -> indexType { return this->material->getNumber(); }
+  virtual auto getMaterialFormulation(PointerCollection &pointers,
+                                      IntegrationPoint &ip)
+      -> std::shared_ptr<HierAMuS::Materials::GenericMaterialFormulation>;
+  auto getMaterialId() -> indexType;
 
-  void insertStiffnessResidual(
-      Eigen::Matrix<prec, Eigen::Dynamic, Eigen::Dynamic> &stiffness,
-      Eigen::Matrix<prec, 1, Eigen::Dynamic> &residual,
-      std::vector<indexType> &eqIds, std::vector<dofStatus> &eqStatus);
 
-  void GenericSetDegreesOfFreedom(PointerCollection& pointers);
-  void GenericAdditionalOperations(PointerCollection& pointers);
+  virtual void GenericSetDegreesOfFreedom(PointerCollection& pointers) = 0;
+  virtual void GenericAdditionalOperations(PointerCollection& pointers) = 0;
 
-  auto getDofs(PointerCollection& pointers) -> std::vector<DegreeOfFreedom *>;
+  virtual auto getDofs(PointerCollection& pointers) -> std::vector<DegreeOfFreedom *>;
 
-  void GenericSetTangentResidual(
+  virtual void GenericSetTangentResidual(
     PointerCollection& pointers,
     Eigen::Matrix<prec, Eigen::Dynamic, Eigen::Dynamic> &stiffness,
-    Eigen::Matrix<prec, Eigen::Dynamic, 1> &residual, std::vector<DegreeOfFreedom *> &Dofs);
+    Eigen::Matrix<prec, Eigen::Dynamic, 1> &residual, std::vector<DegreeOfFreedom *> &Dofs) = 0;
 
 
   auto computeNorm(ptrCol &pointers, NormTypes type) -> prec;
@@ -116,16 +121,16 @@ public:
   virtual void setSpecial(indexType specialIn){};
   virtual auto getType() -> Elementtypes { return Elementtypes::Generic; };
   virtual auto getVertex(ptrCol &pointers, indexType localNumber)
-      -> Geometry::Vertex &;
+      -> Geometry::VertexData &;
   virtual auto getEdge(ptrCol &pointers, indexType localNumber)
-      -> Geometry::Edges &;
+      -> Geometry::EdgesData &;
   virtual auto getFace(ptrCol &pointers, indexType localNumber)
-      -> Geometry::Faces * {
+      -> Geometry::FacesData * {
     throw std::runtime_error("Method getFace not implemented for Element");
     return nullptr;
   };
   virtual auto getVolume(ptrCol &pointers, indexType localNumber)
-      -> Geometry::Volumes * {
+      -> Geometry::VolumesData * {
     throw std::runtime_error("Method getVolume not implemented for Element");
     return nullptr;
   };
@@ -155,8 +160,7 @@ public:
                        Eigen::Matrix<prec, 2, Eigen::Dynamic> &coorDerivative,
                        prec xsi, prec eta){};
 
-  virtual void getJacobian(ptrCol &pointers, Eigen::Matrix<prec, 2, 2> &jacobi,
-                           Eigen::Matrix<prec, 2, Eigen::Dynamic> &coorDeriv){};
+
 
   
   virtual void getElementsLocalNodalReactions(
@@ -165,9 +169,13 @@ public:
   virtual void getSolution(ptrCol &pointers,
                            std::vector<DegreeOfFreedom *> &Dofs,
                            Types::VectorX<prec> &solution);
-  virtual auto getSolution(ptrCol &pointers,
-                           std::vector<DegreeOfFreedom *> &Dofs)
+  auto getSolution(ptrCol &pointers, std::vector<DegreeOfFreedom *> &Dofs)
       -> Types::VectorX<prec>;
+  auto getIncrementalSolution(ptrCol &pointers,
+                              std::vector<DegreeOfFreedom *> &Dofs)
+      -> Types::VectorX<prec>;;
+  auto getNewtonSolution(ptrCol &pointers, std::vector<DegreeOfFreedom *> &Dofs)
+      -> Types::VectorX<prec>;;
   virtual void getVelocity(ptrCol &pointers,
                            std::vector<DegreeOfFreedom *> &Dofs,
                            Types::VectorX<prec> &solution);
@@ -214,23 +222,7 @@ public:
     throw std::runtime_error("getNumberOfFaces not implemented!");
   };
 
-  // Geometric mapping
-  virtual auto getJacobian(ptrCol &pointers, IntegrationPoint &IntegrationPt)
-      -> Types::MatrixXX<prec> {
-    std::runtime_error("getJacobian not implemented for this element!");
-    return {};
-  }
-  virtual void getJacobian(ptrCol &pointers, prec &jacobi, prec xsi) {
-    std::runtime_error("getJacobian 1D not implemented for this element!");
-  };
-  virtual void getJacobian(ptrCol &pointers, Types::Matrix22<prec> &jacobi,
-                           prec xsi, prec eta) {
-    std::runtime_error("getJacobian 2D not implemented for this element!");
-  };
-  virtual void getJacobian(ptrCol &pointers, Types::Matrix33<prec> &jacobi,
-                           prec xsi, prec eta, prec zeta) {
-    std::runtime_error("getJacobian 3D not implemented for this element!");
-  };
+ 
 
   // H1 Shape Functions
   virtual void setH1Shapes(ptrCol &pointers, indexType meshid,
@@ -245,39 +237,6 @@ public:
       -> std::vector<GenericNodes *> {
     throw std::runtime_error("getH1Dofs not implemented!");
     return {};
-  };
-  virtual auto getH1Shapes(ptrCol &pointers, indexType order,
-                           Types::MatrixXX<prec> &jacobi,
-                           IntegrationPoint &IntegrationPt)
-      -> Geometry::H1Shapes {
-    throw std::runtime_error("getH1Shapes not implemented!");
-    return {};
-  };
-  virtual void getH1Shapes(ptrCol &pointers, indexType order,
-                           Types::MatrixXX<prec> &jacobi,
-                           Types::VectorX<prec> &shape,
-                           Types::MatrixXX<prec> &shapeDerivative,
-                           IntegrationPoint &IntegrationPt) {
-    throw std::runtime_error("getH1Shapes not implemented!");
-  };
-  virtual void getH1Shapes(ptrCol &pointers, indexType order, prec jacobi,
-                           Types::VectorX<prec> &shape,
-                           Types::VectorX<prec> &shapeDerivative, prec xsi) {
-    throw std::runtime_error("getH1Shapes 1D not implemented!");
-  };
-  virtual void getH1Shapes(ptrCol &pointers, indexType order,
-                           Types::Matrix22<prec> &jacobi,
-                           Types::VectorX<prec> &shape,
-                           Types::Matrix2X<prec> &shapeDerivative, prec xsi,
-                           prec eta) {
-    throw std::runtime_error("getH1Shapes 2D not implemented!");
-  };
-  virtual void getH1Shapes(ptrCol &pointers, indexType order,
-                           Types::Matrix33<prec> &jacobi,
-                           Types::VectorX<prec> &shape,
-                           Types::Matrix3X<prec> &shapeDerivative, prec xsi,
-                           prec eta, prec zeta) {
-    throw std::runtime_error("getH1Shapes 3D not implemented!");
   };
 
   // HCurl Shapes
@@ -308,21 +267,7 @@ public:
                            indexType meshID, indexType order) {
     throw std::runtime_error("getHDivDofs not implemented!");
   };
-  virtual void getHDivShapes(ptrCol &pointers, indexType order,
-                             Types::Matrix22<prec> &jacobi,
-                             Types::Matrix2X<prec> &shape,
-                             Types::VectorX<prec> &dshape, prec xi,
-                             prec eta) {
-    throw std::runtime_error("getHDivShapes not implemented!");
-  };
 
-  virtual auto getHDivShapes(PointerCollection &pointers, indexType order,
-                             Types::MatrixXX<prec> &jacobi,
-                             IntegrationPoint &IntegrationPt)
-      -> Geometry::HDivShapes {
-    throw std::runtime_error("getHDivShapes not implemented!");
-    return {};
-  };
 
   //L2Shapes
   virtual void getL2Dofs(ptrCol& pointers, std::vector<DegreeOfFreedom*>& Dofs,
@@ -333,75 +278,33 @@ public:
       indexType order) {
       throw std::runtime_error("setL2Shapes not implemented!");
   };
-  virtual auto getL2Shapes(ptrCol& pointers, indexType order,
-      Types::MatrixXX<prec>& jacobi,
-      IntegrationPoint& IntegrationPt)
-      -> Geometry::L2Shapes {
-      throw std::runtime_error("getL2Shapes not implemented!");
-      return {};
-  }
+
 
 
   auto getNumberOfIntegrationPoints(PointerCollection& pointers) -> indexType;
   auto getElementHistoryDataStructure(PointerCollection& pointers) -> const HistoryDataStructure &;
   auto getMaterialHistoryDataStructure(PointerCollection& pointers) -> const HistoryDataStructure &;
-  virtual auto getHistoryDataSetUp(PointerCollection& pointers) -> HistoryDataSetup;
-  virtual auto getHistoryDataIterator(ptrCol &pointers) -> HistoryDataIterator;
+  auto getHistoryDataSetUp(PointerCollection& pointers) -> HistoryDataSetup;
+  auto getHistoryDataIterator(ptrCol &pointers) -> HistoryDataIterator;
 
   void updateRVEHistory(PointerCollection &pointers);
 
   // plot
-  void toParaviewAdapter(ptrCol &pointers, vtkPlotInterface &catalyst,
-                         ParaviewSwitch ToDo);
-
-  virtual void geometryToParaview(PointerCollection &pointers,
-                                  vtkPlotInterface &paraviewAdapter,
-                                  indexType mainMesh, indexType subMesh){};
-  virtual void computeWeightsParaview(PointerCollection &pointers,
-                                      vtkPlotInterface &paraviewAdapter,
-                                      indexType mainMesh, indexType subMesh){};
-  virtual void H1SolutionToParaview(PointerCollection &pointers,
-                                    vtkPlotInterface &paraviewAdapter,
-                                    indexType mainMesh, indexType subMesh,
-                                    indexType meshId, indexType order,
-                                    std::string name){};
-  virtual void H1DataToParaview(PointerCollection &pointers,
-                                vtkPlotInterface &paraviewAdapter,
-                                indexType mainMesh, indexType subMesh,
-                                Types::VectorX<prec> &Data,
-                                indexType numberComponents, indexType order,
-                                std::string &name){};
-  virtual void projectDataToParaviewVertices(
-      PointerCollection &pointers, vtkPlotInterface &paraviewAdapter,
-      indexType mainMesh, indexType subMesh, indexType order,
-      IntegrationPoint &IntegrationPt, Types::VectorX<prec> &data,
-      indexType numberOfComponents, std::string name){};
-
-  // Deprecated
-  virtual void getVtkCell(ptrCol &pointers, vtkSmartPointer<vtkCell> &cell){};
+  virtual void toParaviewAdapter(ptrCol &pointers, vtkPlotInterface &catalyst,
+                         ParaviewSwitch ToDo) = 0;
 
   
-
-  virtual void projectOnVertsParaview(ptrCol &pointers,
-                                      vtkPlotInterface &catalyst,
-                                      Types::VectorX<prec> &values, prec &xsi,
-                                      prec &eta, prec &weight,
-                                      std::string name){};
-
-  virtual void projectOnVertsParaview(ptrCol &pointers,
-                                      vtkPlotInterface &catalyst,
-                                      Types::VectorX<prec> &values, prec &xsi,
-                                      prec &eta, prec &zeta, prec &weight,
-                                      std::string name){};
-
-  virtual void setParaviewCellData(ptrCol &pointers,
-                                   vtkPlotInterface &catalyst);
-  
+  // Element data fields
+  void request_element_data_field(PointerCollection &pointers,
+                                  indexType fieldId,
+                                  indexType rows, indexType cols);
+  auto get_element_data_field(PointerCollection &pointers, 
+                              indexType fieldId) -> Types::MatrixXX<prec> &;
+  void set_element_data_field(PointerCollection &pointers, 
+                              indexType fieldId, Types::MatrixXX<prec> &data);
 
 protected:
-  indexType id;
-  indexType numberOfIntegrationPoints;
-
-  HierAMuS::Materials::Material *material;
+  indexType m_id;
+  HierAMuS::Materials::Material *m_material;
 };
 } // namespace HierAMuS::FiniteElement

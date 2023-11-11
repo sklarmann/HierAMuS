@@ -5,9 +5,11 @@
 #include "GenericSolutionStateWrapper.h"
 #include "solver/GenericSolutionState.h"
 #include "vector"
-#include "equations/DegreeOfFreedom.h"
-#include "loads/PropfunctionHandler.h"
+#include "PropfunctionHandler.h"
 #include "solver/Constraints/ConstraintHandler.h"
+#include "control/ParameterList.h"
+
+#include "DegreeOfFreedom.h"
 
 #include "pybind11/stl.h"
 #include "pybind11/eigen.h"

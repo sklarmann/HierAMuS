@@ -2,33 +2,29 @@
 //
 // SPDX-License-Identifier: BSD-3-Clause
 
-#include "forwarddeclaration.h"
 #include "plot/vtkplotClassBase.h"
 
-#include <equations/DegreeOfFreedom.h>
+
+#include "control/ParameterList.h"
 
 #include <elementFormulations/EL103_Timoshenko3D.h>
 #include <elementFormulations/GenericElementFormulation.h>
 
 #include "shapefunctions/IntegrationsPoints/IntegrationPoints.h"
 
+#include "finiteElements/Edge.h"
 #include "materials/GenericMaterialFormulation.h"
-#include <finiteElements/GenericFiniteElement.h>
 
-#include <geometry/Base.h>
-#include <geometry/Vertex.h>
+#include <geometry/GeometryBaseData.h>
+#include <geometry/VertexData.h>
 
-#include <equations/EquationHandler.h>
-#include <equations/GenericNodes.h>
-#include <equations/NodeSet.h>
-#include <equations/Nodetypes.h>
 
-#include <pointercollection/pointercollection.h>
+#include "pointercollection/pointercollection.h"
 #include <solver/GenericSolutionState.h>
 
 #include <Eigen/Dense>
 
-#include <loads/PropfunctionHandler.h>
+#include "PropfunctionHandler.h"
 
 #include <stdexcept>
 #include <types/MatrixTypes.h>
@@ -41,7 +37,7 @@
 namespace HierAMuS::Elementformulations {
 
 EL103_Timoshenko3D::EL103_Timoshenko3D(PointerCollection *ptrCol)
-    : GenericElementFormulation(ptrCol) {}
+    : GenericElementFormulationInterface(ptrCol) {}
 
 EL103_Timoshenko3D::~EL103_Timoshenko3D() = default;
 
@@ -94,9 +90,6 @@ void EL103_Timoshenko3D::readData(PointerCollection &pointers,
     this->alpha = list.getPrecVal("alpha");
     this->kappa = list.getPrecVal("kappa");
     this->RVECmat = list.getIndexVal("RVECmat");
-
-    
-
   }
 
   this->meshIdDisp = list.getIndexVal("meshidDisp");
@@ -108,78 +101,75 @@ void EL103_Timoshenko3D::readData(PointerCollection &pointers,
   this->temporder = list.getIndexVal("tempOrder");
 
   if (this->fe2 == 0) {
-    auto Logger = pointers.getSPDLogger();
+    auto &Logger = pointers.getSPDLogger();
 
-    Logger.info("\n{:-<100}\n"
-                    "*   Specified parameters for element formulation 103 Timoshenko 3D:\n"
-                    "       Youngs's modulus E:         {:>12.4e}"
-                    "       Shear modulus G:            {:>12.4e}"
-                    "       Cross-section area A:       {:>12.4e}"
-                    "       Torsional stiffness It:     {:>12.4e}"
-                    "       Second moment of area Iy:   {:>12.4e}"
-                    "       Second moment of area Iz:   {:>12.4e}"
-                    "       Shear correction factor ky: {:>12.4e}"
-                    "       Shear correction factor kz: {:>12.4e}",
-    "",this->E,this->G,this->A,this->Ix,this->Iy,this->Iz,this->ky,this->kz);
+    Logger.info(
+        "\n{:-<100}\n"
+        "*   Specified parameters for element formulation 103 Timoshenko 3D:\n"
+        "       Youngs's modulus E:         {:>12.4e}"
+        "       Shear modulus G:            {:>12.4e}"
+        "       Cross-section area A:       {:>12.4e}"
+        "       Torsional stiffness It:     {:>12.4e}"
+        "       Second moment of area Iy:   {:>12.4e}"
+        "       Second moment of area Iz:   {:>12.4e}"
+        "       Shear correction factor ky: {:>12.4e}"
+        "       Shear correction factor kz: {:>12.4e}",
+        "", this->E, this->G, this->A, this->Ix, this->Iy, this->Iz, this->ky,
+        this->kz);
 
-    
   } else {
-    auto Logger = pointers.getSPDLogger();
+    auto &Logger = pointers.getSPDLogger();
 
-    Logger.info("Specified parameters for element formulation 103 Timoshenko 3D:\n   Using the FE2 scheme.");
+    Logger.info("Specified parameters for element formulation 103 Timoshenko "
+                "3D:\n   Using the FE2 scheme.");
   }
   this->messageUnprocessed(pointers, list, "EL103_Timoshenko3D");
 }
 
-void EL103_Timoshenko3D::setDegreesOfFreedom(
-    PointerCollection &pointers, FiniteElement::GenericFiniteElement *elem) {
+void EL103_Timoshenko3D::setDegreesOfFreedom(PointerCollection &pointers,
+                                             FiniteElement::Edge &elem) {
 
-  elem->setH1Shapes(pointers, meshIdDisp, disporder);
-  elem->setH1Shapes(pointers, meshIdRot, rotorder);
+  elem.setH1Shapes(pointers, meshIdDisp, disporder);
+  elem.setH1Shapes(pointers, meshIdRot, rotorder);
   if (this->thermal == 1) {
-    elem->setH1Shapes(pointers, meshIdTemp, temporder);
+    elem.setH1Shapes(pointers, meshIdTemp, temporder);
   }
 }
 
 void EL103_Timoshenko3D::AdditionalOperations(
-    PointerCollection &pointers, FiniteElement::GenericFiniteElement *elem)
-{
+    PointerCollection &pointers, FiniteElement::Edge &elem) {
   if (this->fe2 == 1) {
-    auto GP = this->getIntegrationPoints(pointers, elem);
+    auto GP = this->getIntegrationPoints(pointers, &elem);
     for (auto i : GP) {
-      elem->getMaterialFormulation(pointers)->initRVE(pointers, i);
+      elem.getMaterialFormulation(pointers)->initRVE(pointers, i);
     }
-  } else
-  {
-    if (this->RVECmat == 1 && !m_RVECmatInit)
-    {
+  } else {
+    if (this->RVECmat == 1 && !m_RVECmatInit) {
       m_RVECmatInit = true;
-      auto GP = this->getIntegrationPoints(pointers, elem);
+      auto GP = this->getIntegrationPoints(pointers, &elem);
       GP.setOrder(0);
-      
-      elem->getMaterialFormulation(pointers)->initRVE(
-          pointers, GP.getIntegrationPoint());
+
+      elem.getMaterialFormulation(pointers)->initRVE(pointers,
+                                                      GP.getIntegrationPoint());
 
       Materials::MaterialTransferData materialData;
-      if (thermal==1)
-      {
+      if (thermal == 1) {
         materialData.strains.resize(12);
-      } else
-      {
+      } else {
         materialData.strains.resize(6);
       }
-      
+
       materialData.strains.setZero();
-      elem->getMaterialFormulation(pointers)->getMaterialData(pointers, materialData, GP.getIntegrationPoint());
+      elem.getMaterialFormulation(pointers)->getMaterialData(
+          pointers, materialData, GP.getIntegrationPoint());
       this->m_CMat = materialData.materialTangent;
-      pointers.getSPDLogger().info("Element 103 Timoshenko 3D, computed Material parameters:\n{}",m_CMat);
-    } else if (this->RVECmat == 0)
-    {
-      if (thermal == 1 )
-      {
+      pointers.getSPDLogger().info(
+          "Element 103 Timoshenko 3D, computed Material parameters:\n{}",
+          m_CMat);
+    } else if (this->RVECmat == 0) {
+      if (thermal == 1) {
         this->m_CMat = this->getLinearCMatThermal();
-      } else
-      {
+      } else {
         this->m_CMat = this->getLinearCMat();
       }
     }
@@ -187,8 +177,7 @@ void EL103_Timoshenko3D::AdditionalOperations(
 }
 
 void EL103_Timoshenko3D::updateRVEHistory(
-    PointerCollection &pointers, FiniteElement::GenericFiniteElement *elem)
-{
+    PointerCollection &pointers, FiniteElement::GenericFiniteElement *elem) {
   if (this->fe2) {
     auto GP = this->getIntegrationPoints(pointers, elem);
     for (auto i : GP) {
@@ -216,32 +205,29 @@ auto EL103_Timoshenko3D::getDofs(PointerCollection &pointers,
 }
 
 void EL103_Timoshenko3D::setTangentResidual(
-    PointerCollection &pointers, FiniteElement::GenericFiniteElement *elem,
+    PointerCollection &pointers, FiniteElement::Edge &elem,
     Eigen::Matrix<prec, Eigen::Dynamic, Eigen::Dynamic> &stiffness,
     Eigen::Matrix<prec, Eigen::Dynamic, 1> &residual,
     std::vector<DegreeOfFreedom *> &Dofs) {
 
-  FiniteElement::Edge *edgeElem = dynamic_cast<FiniteElement::Edge *>(elem);
-
   switch (this->mode) {
   case 1: {
-    this->setTangentResidualLinear(pointers, edgeElem, stiffness, residual,
-                                   Dofs);
+    this->setTangentResidualLinear(pointers, elem, stiffness, residual, Dofs);
   } break;
   case 101: {
-    this->setTangentResidualLinearFE2(pointers, edgeElem, stiffness, residual,
-                                   Dofs);
+    this->setTangentResidualLinearFE2(pointers, elem, stiffness, residual,
+                                      Dofs);
   } break;
   case 2: {
     this->setTangentResidualNonlinear(pointers, elem, stiffness, residual,
                                       Dofs);
   } break;
   case 11: {
-    this->setTangentResidualLinearThermal(pointers, edgeElem, stiffness,
-                                          residual, Dofs);
+    this->setTangentResidualLinearThermal(pointers, elem, stiffness, residual,
+                                          Dofs);
   } break;
   case 111: {
-    this->setTangentResidualLinearThermalFE2(pointers, edgeElem, stiffness,
+    this->setTangentResidualLinearThermalFE2(pointers, elem, stiffness,
                                              residual, Dofs);
   } break;
   default: {
@@ -251,13 +237,13 @@ void EL103_Timoshenko3D::setTangentResidual(
 }
 
 void EL103_Timoshenko3D::setTangentResidualLinear(
-    PointerCollection &pointers, FiniteElement::Edge *elem,
+    PointerCollection &pointers, FiniteElement::Edge &elem,
     Eigen::Matrix<prec, Eigen::Dynamic, Eigen::Dynamic> &stiffness,
     Eigen::Matrix<prec, Eigen::Dynamic, 1> &residual,
     std::vector<DegreeOfFreedom *> &Dofs) {
 
-  Dofs = this->getDofs(pointers, elem);
-  auto GP = elem->getIntegrationPoints(pointers);
+  Dofs = this->getDofs(pointers, &elem);
+  auto GP = elem.getIntegrationPoints(pointers);
 
   indexType maxOrder = std::max({disporder, rotorder});
 
@@ -269,11 +255,11 @@ void EL103_Timoshenko3D::setTangentResidualLinear(
   stiffness.setZero();
   residual.resize(Dofs.size());
   residual.setZero();
-  auto solution = elem->getSolution(pointers, Dofs);
+  auto solution = elem.getSolution(pointers, Dofs);
   for (auto &gp : GP) {
-    auto jaco = elem->getJacobian(pointers, gp);
-    auto shapesDisp = elem->getH1Shapes(pointers, disporder, jaco, gp);
-    auto shapesRot = elem->getH1Shapes(pointers, rotorder, jaco, gp);
+    auto jaco = elem.getJacobian(pointers, gp);
+    auto shapesDisp = elem.getH1Shapes(pointers, disporder, jaco, gp);
+    auto shapesRot = elem.getH1Shapes(pointers, rotorder, jaco, gp);
     indexType pos = 0;
     for (auto i = 0; i < shapesDisp.shapes.rows(); ++i) {
       B(0, pos) = shapesDisp.shapeDeriv(0, i);
@@ -289,19 +275,19 @@ void EL103_Timoshenko3D::setTangentResidualLinear(
       B(5, pos + 2) = shapesRot.shapeDeriv(0, i);
       pos += 3;
     }
-    stiffness += B.transpose() * m_CMat * B * gp.weight * jaco(0, 0);
+    stiffness += B.transpose() * m_CMat * B * gp.weight * jaco;
   }
   residual = stiffness * solution;
 }
 
 void EL103_Timoshenko3D::setTangentResidualLinearFE2(
-    PointerCollection &pointers, FiniteElement::Edge *elem,
+    PointerCollection &pointers, FiniteElement::Edge &elem,
     Eigen::Matrix<prec, Eigen::Dynamic, Eigen::Dynamic> &stiffness,
     Eigen::Matrix<prec, Eigen::Dynamic, 1> &residual,
     std::vector<DegreeOfFreedom *> &Dofs) {
 
-  Dofs = this->getDofs(pointers, elem);
-  auto GP = elem->getIntegrationPoints(pointers);
+  Dofs = this->getDofs(pointers, &elem);
+  auto GP = elem.getIntegrationPoints(pointers);
 
   indexType maxOrder = std::max({disporder, rotorder});
 
@@ -313,14 +299,14 @@ void EL103_Timoshenko3D::setTangentResidualLinearFE2(
   stiffness.setZero();
   residual.resize(Dofs.size());
   residual.setZero();
-  auto solution = elem->getSolution(pointers, Dofs);
+  auto solution = elem.getSolution(pointers, Dofs);
 
   Materials::MaterialTransferData materialData;
-  auto Hist = elem->getHistoryDataIterator(pointers);
+  auto Hist = elem.getHistoryDataIterator(pointers);
   for (auto &gp : GP) {
-    auto jaco = elem->getJacobian(pointers, gp);
-    auto shapesDisp = elem->getH1Shapes(pointers, disporder, jaco, gp);
-    auto shapesRot = elem->getH1Shapes(pointers, rotorder, jaco, gp);
+    auto jaco = elem.getJacobian(pointers, gp);
+    auto shapesDisp = elem.getH1Shapes(pointers, disporder, jaco, gp);
+    auto shapesRot = elem.getH1Shapes(pointers, rotorder, jaco, gp);
     indexType pos = 0;
     for (auto i = 0; i < shapesDisp.shapes.rows(); ++i) {
       B(0, pos) = shapesDisp.shapeDeriv(0, i);
@@ -337,29 +323,29 @@ void EL103_Timoshenko3D::setTangentResidualLinearFE2(
       pos += 3;
     }
     materialData.strains = B * solution;
-    elem->getMaterialFormulation(pointers)->getMaterialData(pointers,
-                                                            materialData, gp);
+    elem.getMaterialFormulation(pointers)->getMaterialData(pointers,
+                                                           materialData, gp);
     // std::cout << "\nStrains: " << materialData.strains.transpose();
     // std::cout << "\nStresses: " << materialData.stresses.transpose();
     // std::cout << "\nMaterial tangent: \n"
     //           << materialData.materialTangent << "\n"
     //           << std::endl;
-    stiffness += B.transpose() * materialData.materialTangent * B * gp.weight * jaco(0, 0);
-    residual += B.transpose() * materialData.stresses * gp.weight * jaco(0, 0);
+    stiffness +=
+        B.transpose() * materialData.materialTangent * B * gp.weight * jaco;
+    residual += B.transpose() * materialData.stresses * gp.weight * jaco;
 
     Hist.next();
   }
-  
 }
 
 void EL103_Timoshenko3D::setTangentResidualLinearThermal(
-    PointerCollection &pointers, FiniteElement::Edge *elem,
+    PointerCollection &pointers, FiniteElement::Edge &elem,
     Eigen::Matrix<prec, Eigen::Dynamic, Eigen::Dynamic> &stiffness,
     Eigen::Matrix<prec, Eigen::Dynamic, 1> &residual,
     std::vector<DegreeOfFreedom *> &Dofs) {
 
-  Dofs = this->getDofs(pointers, elem);
-  auto GP = elem->getIntegrationPoints(pointers);
+  Dofs = this->getDofs(pointers, &elem);
+  auto GP = elem.getIntegrationPoints(pointers);
 
   indexType maxOrder = std::max({disporder, rotorder, temporder});
 
@@ -371,12 +357,12 @@ void EL103_Timoshenko3D::setTangentResidualLinearThermal(
   stiffness.setZero();
   residual.resize(Dofs.size());
   residual.setZero();
-  auto solution = elem->getSolution(pointers, Dofs);
+  auto solution = elem.getSolution(pointers, Dofs);
   for (auto &gp : GP) {
-    auto jaco = elem->getJacobian(pointers, gp);
-    auto shapesDisp = elem->getH1Shapes(pointers, disporder, jaco, gp);
-    auto shapesRot = elem->getH1Shapes(pointers, rotorder, jaco, gp);
-    auto shapesThermal = elem->getH1Shapes(pointers, temporder, jaco, gp);
+    auto jaco = elem.getJacobian(pointers, gp);
+    auto shapesDisp = elem.getH1Shapes(pointers, disporder, jaco, gp);
+    auto shapesRot = elem.getH1Shapes(pointers, rotorder, jaco, gp);
+    auto shapesThermal = elem.getH1Shapes(pointers, temporder, jaco, gp);
     indexType pos = 0;
     for (auto i = 0; i < shapesDisp.shapes.rows(); ++i) {
       B(0, pos) = shapesDisp.shapeDeriv(0, i);
@@ -401,19 +387,19 @@ void EL103_Timoshenko3D::setTangentResidualLinearThermal(
       B(11, pos + 2) = shapesDisp.shapeDeriv(0, i);
       pos += 3;
     }
-    stiffness += B.transpose() * m_CMat * B * gp.weight * jaco(0, 0);
+    stiffness += B.transpose() * m_CMat * B * gp.weight * jaco;
   }
   residual = stiffness * solution;
 }
 
 void EL103_Timoshenko3D::setTangentResidualLinearThermalFE2(
-    PointerCollection &pointers, FiniteElement::Edge *elem,
+    PointerCollection &pointers, FiniteElement::Edge &elem,
     Eigen::Matrix<prec, Eigen::Dynamic, Eigen::Dynamic> &stiffness,
     Eigen::Matrix<prec, Eigen::Dynamic, 1> &residual,
     std::vector<DegreeOfFreedom *> &Dofs) {
 
-  Dofs = this->getDofs(pointers, elem);
-  auto GP = elem->getIntegrationPoints(pointers);
+  Dofs = this->getDofs(pointers, &elem);
+  auto GP = elem.getIntegrationPoints(pointers);
 
   indexType maxOrder = std::max({disporder, rotorder, temporder});
 
@@ -425,17 +411,17 @@ void EL103_Timoshenko3D::setTangentResidualLinearThermalFE2(
   stiffness.setZero();
   residual.resize(Dofs.size());
   residual.setZero();
-  auto solution = elem->getSolution(pointers, Dofs);
+  auto solution = elem.getSolution(pointers, Dofs);
 
-  auto Hist = elem->getHistoryDataIterator(pointers);
+  auto Hist = elem.getHistoryDataIterator(pointers);
   Materials::MaterialTransferData materialData;
   materialData.strains.resize(12);
   materialData.historyData = &Hist;
   for (auto &gp : GP) {
-    auto jaco = elem->getJacobian(pointers, gp);
-    auto shapesDisp = elem->getH1Shapes(pointers, disporder, jaco, gp);
-    auto shapesRot = elem->getH1Shapes(pointers, rotorder, jaco, gp);
-    auto shapesThermal = elem->getH1Shapes(pointers, temporder, jaco, gp);
+    auto jaco = elem.getJacobian(pointers, gp);
+    auto shapesDisp = elem.getH1Shapes(pointers, disporder, jaco, gp);
+    auto shapesRot = elem.getH1Shapes(pointers, rotorder, jaco, gp);
+    auto shapesThermal = elem.getH1Shapes(pointers, temporder, jaco, gp);
     indexType pos = 0;
     for (auto i = 0; i < shapesDisp.shapes.rows(); ++i) {
       B(0, pos) = shapesDisp.shapeDeriv(0, i);
@@ -462,18 +448,18 @@ void EL103_Timoshenko3D::setTangentResidualLinearThermalFE2(
     }
 
     materialData.strains = B * solution;
-    elem->getMaterialFormulation(pointers)->getMaterialData(pointers,
-                                                            materialData, gp);
+    elem.getMaterialFormulation(pointers)->getMaterialData(pointers,
+                                                           materialData, gp);
 
-    stiffness += B.transpose() * materialData.materialTangent * B * gp.weight *
-                 jaco(0, 0);
-    residual += B.transpose() * materialData.stresses * gp.weight * jaco(0, 0);
+    stiffness +=
+        B.transpose() * materialData.materialTangent * B * gp.weight * jaco;
+    residual += B.transpose() * materialData.stresses * gp.weight * jaco;
     Hist.next();
   }
 }
 
 void EL103_Timoshenko3D::setTangentResidualNonlinear(
-    PointerCollection &pointers, FiniteElement::GenericFiniteElement *elem,
+    PointerCollection &pointers, FiniteElement::Edge &elem,
     Eigen::Matrix<prec, Eigen::Dynamic, Eigen::Dynamic> &stiffness,
     Eigen::Matrix<prec, Eigen::Dynamic, 1> &residual,
     std::vector<DegreeOfFreedom *> &Dofs) {}
@@ -537,34 +523,35 @@ void EL103_Timoshenko3D::getElementsLocalNodalReactions(
     PointerCollection &ptrCol, FiniteElement::GenericFiniteElement *elem,
     std::map<indexType, std::vector<prec>> &vReacs) {}
 
-void EL103_Timoshenko3D::toParaviewAdaper(
-    PointerCollection &pointers, FiniteElement::GenericFiniteElement *elem,
-    vtkPlotInterface &paraviewAdapter, ParaviewSwitch control) {
+void EL103_Timoshenko3D::toParaviewAdaper(PointerCollection &pointers,
+                                          FiniteElement::Edge &elem,
+                                          vtkPlotInterface &paraviewAdapter,
+                                          ParaviewSwitch control) {
 
-  int matNum = static_cast<int>(elem->getMaterial()->getNumber());
+  int matNum = static_cast<int>(elem.getMaterial()->getNumber());
   switch (control) {
   case HierAMuS::ParaviewSwitch::Mesh: {
-    elem->geometryToParaview(pointers, paraviewAdapter, 0, matNum);
+    elem.geometryToParaview(pointers, paraviewAdapter, 0, matNum);
     break;
   }
   case HierAMuS::ParaviewSwitch::Solution: {
     indexType maxOrder = std::max({disporder, rotorder, temporder});
-    elem->H1SolutionToParaview(pointers, paraviewAdapter, 0, matNum,
+    elem.H1SolutionToParaview(pointers, paraviewAdapter, 0, matNum,
                                this->meshIdDisp, maxOrder,
                                paraviewNames::DisplacementName());
 
-    elem->H1SolutionToParaview(pointers, paraviewAdapter, 0, matNum,
+    elem.H1SolutionToParaview(pointers, paraviewAdapter, 0, matNum,
                                this->meshIdRot, maxOrder,
                                paraviewNames::RotationName());
     if (this->thermal == 1) {
-      elem->H1SolutionToParaview(pointers, paraviewAdapter, 0, matNum,
+      elem.H1SolutionToParaview(pointers, paraviewAdapter, 0, matNum,
                                  this->meshIdTemp, maxOrder,
                                  paraviewNames::TemperatureName());
     }
     break;
   }
   case ParaviewSwitch::Weights: {
-    elem->computeWeightsParaview(pointers, paraviewAdapter, 0, matNum);
+    elem.computeWeightsParaview(pointers, paraviewAdapter, 0, matNum);
   } break;
   default: {
     break;

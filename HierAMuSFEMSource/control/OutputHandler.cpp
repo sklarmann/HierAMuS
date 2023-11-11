@@ -57,6 +57,8 @@ namespace HierAMuS {
         case LogLevel::FullLog:
           return spdlog::level::trace;
           break;
+        default:
+          return spdlog::level::info;
       
       }
     };
@@ -68,46 +70,30 @@ namespace HierAMuS {
   }
 
 
-  void OutputHandler::openLogFile(const std::string &path, const std::string &file){
+  void OutputHandler::openLogFile(const std::string &path, const std::string &file, bool override){
 
-    std::filesystem::path dir(path);
+    std::filesystem::path directory(path);
     std::filesystem::path logfilename(file + ".log");
 
-    if (!this->LogFile.is_open()) {
-      std::filesystem::path fullpath;
-      fullpath = dir / logfilename;
-      std::string tfile = file + ".log";
-      this->LogFile.open(file);
-    }
-    this->LogFile << std::setprecision(this->numberWidth) << std::scientific;
-    std::cout << std::setprecision(this->numberWidth) << std::scientific;
+
     
     this->consoleSink = std::make_shared<spdlog::sinks::stdout_color_sink_mt>();
-    this->consoleSink->set_level(spdlog::level::debug);
+    this->consoleSink->set_level(spdlog::level::info);
 
     std::filesystem::path spdLogFile =
-        dir / std::filesystem::path(file + ".spdlog");
+        directory / std::filesystem::path(file + ".spdlog");
     this->fileSink =
-        std::make_shared<spdlog::sinks::basic_file_sink_mt>(spdLogFile.string());
-    this->fileSink->set_level(spdlog::level::debug);
+        std::make_shared<spdlog::sinks::basic_file_sink_mt>(spdLogFile.string(),override);
+    this->fileSink->set_level(spdlog::level::info);
 
     std::vector<spdlog::sink_ptr> sinks{consoleSink, fileSink};
 
     this->Logger = std::make_shared<spdlog::logger>(file, sinks.begin(), sinks.end());
     this->Logger->set_level(spdlog::level::trace);
-
-    this->consoleSink->set_level(spdlog::level::warn);
-
   }
 
   void OutputHandler::closeLogFile() {
-    if (this->LogFile.is_open()) {
-      this->LogFile.close();
-    }
+
   }
 
-  void OutputHandler::setPrecision(int num){
-    this->numberWidth = num;
-    this->all() << std::setprecision(num);
-  }
 } /* namespace HierAMuS */

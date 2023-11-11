@@ -106,19 +106,31 @@ class fromGMSh:
             [et, enum, nt] = gmsh.model.mesh.getElements(2,tag)
             for j in enum[0]:
                 elems.addFace(materialNumber=material, FaceNumber=j)
+    
+    
+    def addFaceElementsPhysGroup(self,gmsh,groupName:str,material:int):
+        tags = self.getTagsByPhysicalGroupName(gmsh,groupName,2)
+        if tags:
+            self.addFaceElements(gmsh,tags,material)          
+    
 
-    def addVolumeElements(self,gmsh,volTags,material):
+    def addVolumeElements(self,gmsh,volTags,material:int):
         ltags = []
         if type(volTags) == list:
             ltags = volTags
         else:
             ltags.append(volTags)
-            
+        
         elems = self.mesh.getElementCommands()
         for tag in ltags:
             [et, enum, nt] = gmsh.model.mesh.getElements(3,tag)
             for j in enum[0]:
                 elems.addVolume(materialNumber=material, VolumeNumber=j)
+    
+    def addVolumeElementsPhysGroup(self,gmsh,groupName:str,material:int):
+        tags = self.getTagsByPhysicalGroupName(gmsh,groupName,3)
+        if tags:
+            self.addVolumeElements(gmsh,tags,material)          
         
     def addFaceConstraint(self,gmsh,faceTags,vertexTag,material):
         ltags = []
@@ -318,4 +330,11 @@ class fromGMSh:
             facelist.extend(et.tolist())
         return facelist
     
+    def getTagsByPhysicalGroupName(self,gmsh,groupName:str,dim:int):
+        groups = gmsh.model.getPhysicalGroups(dim)
+        
+        for i in groups:
+            cname = gmsh.model.getPhysicalName(dim,i[1])
+            if cname == groupName:
+                return gmsh.model.getEntitiesForPhysicalGroup(dim,i[1]).tolist()
 

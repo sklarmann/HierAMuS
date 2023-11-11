@@ -2,17 +2,17 @@
 //
 // SPDX-License-Identifier: BSD-3-Clause
 
-#include <materials/MaterialformulationList.h>
-#include <pointercollection/pointercollection.h>
+#include "materials/MaterialformulationList.h"
+#include "pointercollection/pointercollection.h"
 
 
-#include <materials/MaterialFormulation2.h>
+#include "materials/MaterialFormulation2.h"
 
-#include <materials/3D/MA1_LinearElastic_Isotrop.h>
+#include "materials/3D/MA1_LinearElastic_Isotrop.h"
 #include "materials/3D/MA2_NeoHook.h"
 #include "materials/3D/MA3_SmallStrainPlasticity.h"
 
-#include <materials/2D/MA3_2D_LinearElastic_Isotrop.h>
+#include "materials/2D/MA3_2D_LinearElastic_Isotrop.h"
 #include "materials/2D/MA1_2D_PlainStrain_3D.h"
 
 #include "Homogenization/MAS1_Homogenization.h"
@@ -28,7 +28,7 @@ MaterialFormulationList::~MaterialFormulationList() {
 void MaterialFormulationList::addMaterial(
     PointerCollection &pointers, indexType number,
     indexType materialFormulation, ParameterList &materialparameters) {
-  while (number + 1 > this->Materials.size()) {
+  while (number + 1 > static_cast<indexType>(this->Materials.size())) {
     this->Materials.push_back(nullptr);
   }
 
@@ -79,7 +79,7 @@ MaterialFormulationList::getMaterial(indexType number) {
 }
 void MaterialFormulationList::addMaterial(
     indexType number, std::shared_ptr<GenericMaterialFormulation> material) {
-  while (number + 1 > this->Materials.size()) {
+  while (number + 1 > static_cast<indexType>(this->Materials.size())) {
     this->Materials.push_back(nullptr);
   }
   this->Materials[number] = material;

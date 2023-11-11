@@ -8,7 +8,7 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "HierAMuS"
-version = "0.1"
+version = "0.2"
 dependencies = ["gmsh","matplotlib","numpy"]
 
 [tool.setuptools]

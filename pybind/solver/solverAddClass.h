@@ -8,15 +8,15 @@
 namespace py = pybind11;
 
 #include "GenericSolutionStateWrapper.h"
+#include "StaticSolutionStateHomogenizationWrapper.h"
 #include "StaticSolutionStateWrapper.h"
 #include "TransientSolutionNewmarkWrapper.h"
-#include "StaticSolutionStateHomogenizationWrapper.h"
 
 #include "GenericSolverWrapper.h"
 
+#include "ConstraintWrapper.h"
 #include "SolutionTypesWrapper.h"
 #include "SolverTypesWrapper.h"
-#include "ConstraintWrapper.h"
 
 #define CNAME solverAdder
 
@@ -24,9 +24,8 @@ namespace HierAMuS {
 class CNAME {
 public:
   CNAME(py::module &m)
-      : constraints(m), genSol(m), solvers(m), solutions(m), staticSol(m),
-        newmarkSol(m),
-        genSolver(m), staticHomSol(m){};
+      : genSol(m), staticSol(m), staticHomSol(m), newmarkSol(m), solvers(m),
+        solutions(m), genSolver(m), constraints(m){};
   void registerFunctions();
 
 private:
@@ -38,7 +37,7 @@ private:
   SolverTypesWrapper solvers;
   SolutionTypesWrapper solutions;
 
-    GenericSolverWrapper genSolver;
+  GenericSolverWrapper genSolver;
   ConstraintWrapper constraints;
 };
 } // namespace HierAMuS

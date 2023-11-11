@@ -17,20 +17,20 @@ class boundaryConditions:
         if type(number) == list:
             for i in number:
                 elem = self.mesh.program.ptr.getGeometryData().getGeometryElement(eltype,i)
-                elem.setBoundaryCondition(self.mesh.program.ptr,meshId,shapeOrder,shapeType,dofs,set)
+                elem.setBoundaryCondition(meshId,shapeOrder,shapeType,dofs,set)
         else:
             elem = self.mesh.program.ptr.getGeometryData().getGeometryElement(eltype,number)
-            elem.setBoundaryCondition(self.mesh.program.ptr,meshId,shapeOrder,shapeType,dofs,set)
+            elem.setBoundaryCondition(meshId,shapeOrder,shapeType,dofs,set)
 
     def BC(self,eltype,number,meshId,dofs,shapeOrder,shapeType=HierAMuSPyFEM.Geometry.ShapeFunctionTypes.H1,set=True):
         
         if type(number) == list:
             for i in number:
                 elem = self.mesh.program.ptr.getGeometryData().getGeometryElement(eltype,i)
-                elem.setBoundaryCondition(self.mesh.program.ptr,meshId,shapeOrder,shapeType,dofs,set)
+                elem.setBoundaryCondition(meshId,shapeOrder,shapeType,dofs,set)
         else:
             elem = self.mesh.program.ptr.getGeometryData().getGeometryElement(eltype,number)
-            elem.setBoundaryCondition(self.mesh.program.ptr,meshId,shapeOrder,shapeType,dofs,set)
+            elem.setBoundaryCondition(meshId,shapeOrder,shapeType,dofs,set)
     
     def BCVertex(self,number,meshId,dofs,set=True):
         ll=[]
@@ -41,9 +41,15 @@ class boundaryConditions:
             
         for i in ll:
             self.BC(self.mesh.getGeometryCommands().vertexType(),i,meshId,dofs,1,HierAMuSPyFEM.Geometry.ShapeFunctionTypes.H1,set)
-    
+            
+    def BCEdge(self,number,meshId,dofs,shapeOrder,shapeType=HierAMuSPyFEM.Geometry.ShapeFunctionTypes.H1,set=True):
+        self.BC(self.mesh.getGeometryCommands().edgeType(),number,meshId,dofs,shapeOrder,shapeType,set)
+        
     def BCFace(self,number,meshId,dofs,shapeOrder,shapeType=HierAMuSPyFEM.Geometry.ShapeFunctionTypes.H1,set=True):
         self.BC(self.mesh.getGeometryCommands().faceType(),number,meshId,dofs,shapeOrder,shapeType,set)
+        
+    def BCVolume(self,number,meshId,dofs,shapeOrder,shapeType=HierAMuSPyFEM.Geometry.ShapeFunctionTypes.H1,set=True):
+        self.BC(self.mesh.getGeometryCommands().volumeType(),number,meshId,dofs,shapeOrder,shapeType,set)
             
                     
             
@@ -53,11 +59,11 @@ class boundaryConditions:
         if type(number) == list:
             for i in number:
                 elem = self.mesh.program.ptr.getGeometryData().getGeometryElement(eltype,i)
-                elem.setLoad(self.mesh.program.ptr,meshId,shapeType,shapeorder,load,propnum,direction,localLoad,add)
+                elem.setLoad(self.mesh.program.ptr.getLoadList(),meshId,shapeType,shapeorder,load,propnum,direction,localLoad,add)
             
         else:
             elem = self.mesh.program.ptr.getGeometryData().getGeometryElement(eltype,number)
-            elem.setLoad(self.mesh.program.ptr,meshId,shapeType,shapeorder,load,propnum,direction,localLoad,add)
+            elem.setLoad(self.mesh.program.ptr.getLoadList(),meshId,shapeType,shapeorder,load,propnum,direction,localLoad,add)
             
     
     def load(self,eltype,number,meshId,load,propnum,add=True,localLoad=False,shapeorder=1,shapeType=HierAMuSPyFEM.Geometry.ShapeFunctionTypes.H1,direction=[1,0,0]):
@@ -65,11 +71,11 @@ class boundaryConditions:
         if type(number) == list:
             for i in number:
                 elem = self.mesh.program.ptr.getGeometryData().getGeometryElement(eltype,i)
-                elem.setLoad(self.mesh.program.ptr,meshId,shapeType,shapeorder,load,propnum,direction,localLoad,add)
+                elem.setLoad(self.mesh.program.ptr.getLoadList(),meshId,shapeType,shapeorder,load,propnum,direction,localLoad,add)
             
         else:
             elem = self.mesh.program.ptr.getGeometryData().getGeometryElement(eltype,number)
-            elem.setLoad(self.mesh.program.ptr,meshId,shapeType,shapeorder,load,propnum,direction,localLoad,add)
+            elem.setLoad(self.mesh.program.ptr.getLoadList(),meshId,shapeType,shapeorder,load,propnum,direction,localLoad,add)
     
     def Load(self,eltype,number,meshId,load,propnum,add=True,localLoad=False,shapeorder=1,shapeType=HierAMuSPyFEM.Geometry.ShapeFunctionTypes.H1,direction=[1,0,0]):
         ll = []
@@ -81,10 +87,19 @@ class boundaryConditions:
             
         for i in ll:
             elem = self.mesh.program.ptr.getGeometryData().getGeometryElement(eltype,i)
-            elem.setLoad(self.mesh.program.ptr,meshId,shapeType,shapeorder,load,propnum,direction,localLoad,add)
+            elem.setLoad(self.mesh.program.ptr.getLoadList(),meshId,shapeType,shapeorder,load,propnum,direction,localLoad,add)
             
     def LoadVertex(self,number,meshId,load,propnum,add=True):
         self.Load(self.mesh.getGeometryCommands().vertexType(),number,meshId,load,propnum,add)
+        
+    def LoadEdge(self,number,meshId,load,propnum,add=True,shapeorder=1,localload=False,shapeType=HierAMuSPyFEM.Geometry.ShapeFunctionTypes.H1,direction=[1,0,0]):
+        self.Load(self.mesh.getGeometryCommands().edgeType(),number,meshId,load,propnum,add,shapeorder=shapeorder,shapeType=shapeType,direction=direction)
+        
+    def LoadFace(self,number,meshId,load,propnum,add=True,shapeorder=1,localload=False,shapeType=HierAMuSPyFEM.Geometry.ShapeFunctionTypes.H1,direction=[1,0,0]):
+        self.Load(self.mesh.getGeometryCommands().faceType(),number,meshId,load,propnum,add,shapeorder=shapeorder,shapeType=shapeType,direction=direction)
+        
+    def LoadVolume(self,number,meshId,load,propnum,add=True,shapeorder=1,localload=False,shapeType=HierAMuSPyFEM.Geometry.ShapeFunctionTypes.H1,direction=[1,0,0]):
+        self.Load(self.mesh.getGeometryCommands().volumeType(),number,meshId,load,propnum,add,shapeorder=shapeorder,shapeType=shapeType,direction=direction)
     
     
     def prescribedSolution(self,eltype,number,meshId,load,propnum,add=True,localLoad=False,shapeorder=1,shapeType=HierAMuSPyFEM.Geometry.ShapeFunctionTypes.H1,direction=[1,0,0]):

@@ -6,26 +6,31 @@
 
 #pragma once
 
-#include <forwarddeclaration.h>
 
-#include <elementFormulations/GenericElementFormulation.h>
+#include "elementFormulations/GenericElementFormulationInterface.h"
 #include <Eigen/Dense>
 #include <types/MatrixTypes.h>
 #include <vector>
 
+namespace HierAMuS::FiniteElement {
+class beamInterfaceElement2D;
+}
+
 namespace HierAMuS::Elementformulations {
 
-class EL204_BeamInterface2D : public GenericElementFormulation {
+class EL204_BeamInterface2D : public GenericElementFormulationInterface<FiniteElement::beamInterfaceElement2D> {
 public:
   explicit EL204_BeamInterface2D(PointerCollection *ptrCol);
   ~EL204_BeamInterface2D() override;
   void readData(PointerCollection &pointers, ParameterList &list) override;
-  void setDegreesOfFreedom(PointerCollection& pointers, FiniteElement::GenericFiniteElement *elem) override;
-  void AdditionalOperations(PointerCollection& pointers, FiniteElement::GenericFiniteElement *elem) override;
+  void
+  setDegreesOfFreedom(PointerCollection &pointers,
+                      FiniteElement::beamInterfaceElement2D &elem) override;
+  void AdditionalOperations(PointerCollection& pointers, FiniteElement::beamInterfaceElement2D &elem) override;
   auto getDofs(PointerCollection& pointers, FiniteElement::GenericFiniteElement *elem)
   -> std::vector<DegreeOfFreedom *> override;
   void setTangentResidual(PointerCollection& pointers,
-                          FiniteElement::GenericFiniteElement *elem,
+                          FiniteElement::beamInterfaceElement2D &elem,
                           Types::MatrixXX<prec> &stiffness,
                           Types::VectorX<prec> &residual, std::vector<DegreeOfFreedom *> &Dofs) override;
 
@@ -40,7 +45,7 @@ public:
 
   //Plot
   void toParaviewAdaper(PointerCollection &pointers,
-                        FiniteElement::GenericFiniteElement *elem,
+                        FiniteElement::beamInterfaceElement2D &elem,
                         vtkPlotInterface &paraviewAdapter,
                         ParaviewSwitch control) override;
 

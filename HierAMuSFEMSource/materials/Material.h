@@ -4,25 +4,32 @@
 
 
 #pragma once
-#include <datatypes.h>
+#include "datatypes.h"
 
-#include <forwarddeclaration.h>
 #include <memory>
 
-namespace HierAMuS::Materials {
+namespace HierAMuS {
+class PointerCollection;
+namespace Elementformulations {
+class GenericElementFormulation;
+}
+namespace Materials {
+class GenericMaterialFormulation;
 class Material {
 public:
   Material(indexType matNumIn);
   ~Material();
   void setElementForumaltion(indexType elementNumber);
   void setMaterialFormulation(indexType materialNumber);
-  auto getElementFormulation(
-    PointerCollection& pointers) -> std::shared_ptr<Elementformulations::GenericElementFormulation>;
-  auto getMaterialFormulation(PointerCollection& pointers) -> std::shared_ptr<GenericMaterialFormulation>;
+  auto getElementFormulation(PointerCollection &pointers)
+      -> std::shared_ptr<Elementformulations::GenericElementFormulation>;
+  auto getMaterialFormulation(PointerCollection &pointers)
+      -> std::shared_ptr<GenericMaterialFormulation>;
   auto getNumber() -> indexType { return this->id; };
 
 private:
   indexType matNum, elnum, id;
 };
 
+} // namespace Materials
 } /* namespace HierAMuS */

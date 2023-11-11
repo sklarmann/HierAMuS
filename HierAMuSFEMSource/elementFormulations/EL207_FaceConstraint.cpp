@@ -8,9 +8,8 @@
 
 
 #include "finiteElements/FaceConstraint.h"
-#include "forwarddeclaration.h"
-#include "geometry/Base.h"
-#include "geometry/Edges.h"
+#include "geometry/GeometryBaseData.h"
+#include "geometry/Edges/EdgesData.h"
 #include "plot/vtkplotClassBase.h"
 #include "shapefunctions/IntegrationsPoints/IntegrationPoints.h"
 #include <iostream>
@@ -20,10 +19,9 @@
 
 #include <control/HandlingStructs.h>
 #include <control/OutputHandler.h>
+#include "control/ParameterList.h"
 #include <pointercollection/pointercollection.h>
 
-#include <equations/DegreeOfFreedom.h>
-#include <equations/GenericNodes.h>
 
 #include <finiteElements/GenericFiniteElement.h>
 #include "finiteElements/Face.h"
@@ -48,7 +46,7 @@
 namespace HierAMuS::Elementformulations {
 
 EL207_FaceConstraint::EL207_FaceConstraint(PointerCollection *ptrCol)
-    : GenericElementFormulation(ptrCol) {}
+    : GenericElementFormulationInterface(ptrCol) {}
 
 EL207_FaceConstraint::~EL207_FaceConstraint() = default;
 
@@ -62,7 +60,7 @@ void EL207_FaceConstraint::readData(PointerCollection &pointers, ParameterList &
   this->intOrderDisp = list.getIndexVal("dispOrder");
   this->k = list.getPrecVal("k");
 
-  auto Log = pointers.getSPDLogger();
+  auto &Log = pointers.getSPDLogger();
 
   Log.info("\n{:-<100}\n"
                 "*   Element 207, specified Options\n"
@@ -86,22 +84,19 @@ void EL207_FaceConstraint::readData(PointerCollection &pointers, ParameterList &
 }
 
 void EL207_FaceConstraint::setDegreesOfFreedom(
-  PointerCollection& pointers, FiniteElement::GenericFiniteElement *elem) {
+  PointerCollection& pointers, FiniteElement::FaceConstraint &elem) {
 
-  FiniteElement::FaceConstraint *facelem = static_cast<FiniteElement::FaceConstraint *>(elem);
-
-  facelem->setH1Shapes(pointers, this->meshIdDisp, this->intOrderDisp);
-  facelem->setVertexNodes(pointers, meshIdDisp);
-  facelem->setVertexNodes(pointers, meshIdRot);
-  facelem->setVertexNodes(pointers, meshIdLam);
-  facelem->setVertexNodes(pointers, meshIdMu);
+  elem.setH1Shapes(pointers, this->meshIdDisp, this->intOrderDisp);
+  elem.setVertexNodes(pointers, meshIdDisp);
+  elem.setVertexNodes(pointers, meshIdRot);
+  elem.setVertexNodes(pointers, meshIdLam);
+  elem.setVertexNodes(pointers, meshIdMu);
   
   
 }
 
 void EL207_FaceConstraint::AdditionalOperations(
-  PointerCollection& pointers, FiniteElement::GenericFiniteElement *elem) {
-  GenericElementFormulation::AdditionalOperations(pointers, elem);
+  PointerCollection& pointers, FiniteElement::FaceConstraint &elem) {
 
   
 }
@@ -119,7 +114,7 @@ auto EL207_FaceConstraint::getDofs(PointerCollection& pointers, FiniteElement::G
 }
 
 void EL207_FaceConstraint::setTangentResidual(
-  PointerCollection& pointers, FiniteElement::GenericFiniteElement *elem,
+  PointerCollection& pointers, FiniteElement::FaceConstraint &elem,
   Types::MatrixXX<prec> &stiffness, Types::VectorX<prec> &residual, std::vector<DegreeOfFreedom *> &Dofs) {
 
   switch (this->mode) {
@@ -134,23 +129,23 @@ void EL207_FaceConstraint::setTangentResidual(
 
 
 void EL207_FaceConstraint::toParaviewAdaper(PointerCollection &pointers,
-                                     FiniteElement::GenericFiniteElement *elem,
+                                     FiniteElement::FaceConstraint &elem,
                                      vtkPlotInterface &paraviewAdapter,
                                      ParaviewSwitch control) {
 
-  int matNum = static_cast<int>(elem->getMaterial()->getNumber());
+  int matNum = static_cast<int>(elem.getMaterial()->getNumber());
   switch (control) {
   case ParaviewSwitch::Mesh: {
-    elem->geometryToParaview(pointers, paraviewAdapter, 0, matNum);
+    elem.geometryToParaview(pointers, paraviewAdapter, 0, matNum);
 
   } break;
   case ParaviewSwitch::Solution: {
-    elem->H1SolutionToParaview(pointers, paraviewAdapter, 0, matNum,
+    elem.H1SolutionToParaview(pointers, paraviewAdapter, 0, matNum,
                                this->meshIdDisp, this->intOrderDisp,
                                paraviewNames::DisplacementName());
   } break;
   case ParaviewSwitch::Weights: {
-    elem->computeWeightsParaview(pointers, paraviewAdapter, 0, matNum);
+    elem.computeWeightsParaview(pointers, paraviewAdapter, 0, matNum);
   } break;
   case ParaviewSwitch::ProjectedValues: {
     
@@ -172,23 +167,22 @@ auto EL207_FaceConstraint::getNumberOfIntergrationPoints(
 
 void EL207_FaceConstraint::setTangentResidualDispFormulation(
   PointerCollection& pointers,
-  FiniteElement::GenericFiniteElement *elem,
+  FiniteElement::FaceConstraint &elem,
   Eigen::Matrix<prec, Eigen::Dynamic, Eigen::Dynamic> &stiffness,
   Eigen::Matrix<prec, Eigen::Dynamic, 1> &residual, std::vector<DegreeOfFreedom *> &Dofs) {
 
 
-  FiniteElement::FaceConstraint *facelem = static_cast<FiniteElement::FaceConstraint *>(elem);
 
 
   Types::VectorX<prec> solution;
   Materials::MaterialTransferData materialData;
 
   Dofs.clear();
-  facelem->getH1Dofs(pointers, Dofs, this->meshIdDisp, this->intOrderDisp);
-  facelem->getVertexDofs(pointers, Dofs, meshIdDisp);
-  facelem->getVertexDofs(pointers, Dofs, meshIdRot);
-  facelem->getVertexDofs(pointers, Dofs, meshIdLam);
-  facelem->getVertexDofs(pointers, Dofs, meshIdMu);
+  elem.getH1Dofs(pointers, Dofs, this->meshIdDisp, this->intOrderDisp);
+  elem.getVertexDofs(pointers, Dofs, meshIdDisp);
+  elem.getVertexDofs(pointers, Dofs, meshIdRot);
+  elem.getVertexDofs(pointers, Dofs, meshIdLam);
+  elem.getVertexDofs(pointers, Dofs, meshIdMu);
 
   indexType numDofs = static_cast<indexType>(Dofs.size());
   indexType numDispDofs = numDofs - 12;
@@ -199,22 +193,22 @@ void EL207_FaceConstraint::setTangentResidualDispFormulation(
   residual.resize(numDofs);
   residual.setZero();
 
-  elem->getSolution(pointers, Dofs, solution);
+  elem.getSolution(pointers, Dofs, solution);
 
-  auto GP = this->getIntegrationPoints(pointers, elem);
+  auto GP = this->getIntegrationPoints(pointers, &elem);
   GP.setOrder(intOrderDisp*intOrderDisp);
 
-  auto Hist = elem->getHistoryDataIterator(pointers);
+  auto Hist = elem.getHistoryDataIterator(pointers);
   Types::MatrixXX<prec> jaco;
   jaco.resize(2, 2);
   jaco = Types::MatrixXX<prec>::Identity(2, 2);
-  Types::Vector3<prec> pointCoor = facelem->getVertexCoordinates(pointers);
+  Types::Vector3<prec> pointCoor = elem.getVertexCoordinates(pointers);
   //prec sumDa = 0;
   Types::Matrix3X<prec> NMat;
   NMat.resize(3, numDispDofs);
   NMat.setZero();
   for (auto i : GP) {
-    auto shapes = elem->getH1Shapes(pointers, intOrderDisp, jaco, i);
+    auto shapes = elem.getH1Shapes(pointers, intOrderDisp, jaco, i);
     for(auto j=0;j<shapes.shapes.rows();++j){
       NMat(0, 3*j+0) = shapes.shapes(j);
       NMat(1, 3*j+1) = shapes.shapes(j);
@@ -222,12 +216,12 @@ void EL207_FaceConstraint::setTangentResidualDispFormulation(
     }
 
 
-    Types::Vector3<prec> surfaceCoor = facelem->getFaceCoordinates(pointers, i);
+    Types::Vector3<prec> surfaceCoor = elem.getFaceCoordinates(pointers, i);
     Types::Vector3<prec> r0 = surfaceCoor - pointCoor;
     Types::Matrix33<prec> skewR = Math::Geometry::skewMatrix(r0);
 
-    Types::Vector3<prec> G1 = facelem->getTangentG1(pointers, i);
-    Types::Vector3<prec> G2 = facelem->getTangentG2(pointers, i);
+    Types::Vector3<prec> G1 = elem.getTangentG1(pointers, i);
+    Types::Vector3<prec> G2 = elem.getTangentG2(pointers, i);
     prec detJ = (G1.cross(G2)).norm();
 
     // dus*lam

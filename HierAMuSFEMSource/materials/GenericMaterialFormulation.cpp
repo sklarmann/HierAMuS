@@ -5,8 +5,8 @@
 
 
 
-#include <materials/GenericMaterialFormulation.h>
-#include <control/ParameterList.h>
+#include "materials/GenericMaterialFormulation.h"
+#include "control/ParameterList.h"
 
 namespace HierAMuS::Materials {
 

@@ -8,7 +8,7 @@
 
 #include "beamInterfaceElement2D.h"
 #include "datatypes.h"
-#include "forwarddeclaration.h"
+
 #include "plot/vtkplotClassBase.h"
 #include <types/MatrixTypes.h>
 
@@ -21,13 +21,12 @@
 
 #include <pointercollection/pointercollection.h>
 
-#include <geometry/Base.h>
-#include <geometry/BeamInterface2D.h>
-#include <geometry/Edges.h>
-#include <geometry/Vertex.h>
+#include <geometry/GeometryBaseData.h>
+#include <geometry/Special/BeamInterface2D.h>
+#include <geometry/Edges/EdgesData.h>
+#include <geometry/VertexData.h>
 
-#include <equations/DegreeOfFreedom.h>
-#include <equations/GenericNodes.h>
+
 #include <geometry/GeometryData.h>
 
 #include <control/HandlingStructs.h>
@@ -35,13 +34,15 @@
 
 #include "shapefunctions/IntegrationsPoints/IntegrationPoints.h"
 #include "shapefunctions/IntegrationsPoints/dataClasses/GaussPoints.h"
-#include <equations/NodeSet.h>
+
 #include <shapefunctions/LagrangeShape.h>
 #include <solver/GenericSolutionState.h>
 #include <solver/SolutionTypes.h>
 
 #include <algorithm>
 #include <sys/types.h>
+
+#include "GenericNodes.h"
 
 
 
@@ -71,19 +72,19 @@ void beamInterfaceElement2D::getShapes(
     Types::VectorX<prec> &shapeY, Types::Matrix2X<prec> &dshapeY, prec &detj,
     const prec &xi, const prec &eta, const indexType &localedgeNumber) {
   auto &tedge =
-      pointers.getGeometryData()->getEdge(this->edges[localedgeNumber]);
-  auto tvert = pointers.getGeometryData()->getVertex(this->vert);
+      pointers.getGeometryData()->getEdgeData(this->edges[localedgeNumber]);
+  auto tvert = pointers.getGeometryData()->getVertexData(this->vert);
   Types::VectorX<prec> edgeShape;
   Types::VectorX<prec> dedgeShape;
-  tedge.getH1Shapes(pointers, 1, edgeShape, dedgeShape, eta);
+  tedge.getH1Shapes(1, edgeShape, dedgeShape, eta);
   Types::Vector3<prec> ecoor1;
   Types::Vector3<prec> ecoor2;
   Types::Vector3<prec> tempcoor;
-  ecoor1 = tedge.getCoordinates(pointers, prec(-1));
-  ecoor2 = tedge.getCoordinates(pointers, prec(1));
+  ecoor1 = tedge.getCoordinates(prec(-1));
+  ecoor2 = tedge.getCoordinates(prec(1));
   prec edetj = (ecoor2 - ecoor1).norm() / prec(2);
   prec sdetj = this->thickness / prec(2);
-  ecoor1 = tedge.getCoordinates(pointers, eta);
+  ecoor1 = tedge.getCoordinates(eta);
   ecoor1 += this->thickness * this->normal;
   tempcoor = ecoor1 - tvert.getCoordinates();
   prec curry = tempcoor.dot(this->tangent);
@@ -104,8 +105,8 @@ void beamInterfaceElement2D::getShapes(
   Types::VectorX<prec> dtshp;
   Types::VectorX<prec> tshpx;
   Types::VectorX<prec> dtshpx;
-  tedge.getH1Shapes(pointers, order, tshp, dtshp, eta);
-  tedge.getH1Shapes(pointers, order, tshpx, dtshpx, xi);
+  tedge.getH1Shapes(order, tshp, dtshp, eta);
+  tedge.getH1Shapes(order, tshpx, dtshpx, xi);
   dtshpx /= sdetj;
   dtshp /= edetj;
   for (auto i = 0; i < nnodes; ++i) {
@@ -125,7 +126,7 @@ void beamInterfaceElement2D::getShapes(
     // if (curry < prec(0)) dshapeX(1, nnodes + i) *= prec(-1);
   }
   std::vector<GenericNodes *> tempNodes;
-  tedge.getNodes(pointers, tempNodes, meshIDDisp);
+  tedge.getNodes(tempNodes, meshIDDisp);
   for (auto i = 0; i < tempNodes.size(); ++i) {
     indexType id = this->dofmapDisp[tempNodes[i]->getId()];
     shapeX(id) += tshp(i) * tshpx(0);
@@ -136,7 +137,7 @@ void beamInterfaceElement2D::getShapes(
     dshapeY(0, id) += tshp(i) * dtshpx(0);
     dshapeY(1, id) += dtshp(i) * tshpx(0);
   }
-  tedge.getNodes(pointers, tempNodes, meshIDWarp);
+  tedge.getNodes(tempNodes, meshIDWarp);
   for (auto i = 0; i < tempNodes.size(); ++i) {
     indexType id = this->dofmapWarp[tempNodes[i]->getId()] + nnodes;
     shapeX(id) += tshp(i) * tshpx(1);
@@ -178,21 +179,21 @@ void beamInterfaceElement2D::getEtaShape(
   shape.setZero();
   dshape.setZero();
 
-  auto &tedge = pointers.getGeometryData()->getEdge(this->edges[edgeNum]);
+  auto &tedge = pointers.getGeometryData()->getEdgeData(this->edges[edgeNum]);
   Types::VectorX<prec> shp;
   Types::VectorX<prec> dshp;
-  tedge.getH1Shapes(pointers, order, shp, dshp, eta);
+  tedge.getH1Shapes(order, shp, dshp, eta);
   Types::Vector3<prec> coor1;
   Types::Vector3<prec> coor2;
-  coor1 = tedge.getCoordinates(pointers, prec(-1));
-  coor2 = tedge.getCoordinates(pointers, prec(1));
+  coor1 = tedge.getCoordinates(prec(-1));
+  coor2 = tedge.getCoordinates(prec(1));
   coor2 -= coor1;
 
   prec len = coor2.norm();
   dshp *= prec(2) / len;
 
   std::vector<GenericNodes *> tempNodes;
-  tedge.getNodes(pointers, tempNodes, meshID);
+  tedge.getNodes(tempNodes, meshID);
 
   for (auto i = 0; i < tempNodes.size(); ++i) {
     indexType id = this->dofmapDisp[tempNodes[i]->getId()];
@@ -230,35 +231,35 @@ void beamInterfaceElement2D::computeShapes(ptrCol &pointers,
                                            const indexType &order) {
   // Constrain Dofs
   pointers.getGeometryData()
-      ->getVertex(this->vert)
-      .setAllNodeBoundaryConditionMeshId(pointers, mesIDDisp, 2);
+      ->getVertexData(this->vert)
+      .setAllNodeBoundaryConditionMeshId(mesIDDisp, 2);
   pointers.getGeometryData()
-      ->getVertex(this->vert)
-      .setAllNodeBoundaryConditionMeshId(pointers, mesIDRot, 1);
+      ->getVertexData(this->vert)
+      .setAllNodeBoundaryConditionMeshId(mesIDRot, 1);
   pointers.getGeometryData()
-      ->getVertex(this->vert)
-      .setAllNodeBoundaryConditionMeshId(pointers, mesIDRot, 2);
+      ->getVertexData(this->vert)
+      .setAllNodeBoundaryConditionMeshId(mesIDRot, 2);
 
-  std::vector<Geometry::Base *> tempElems;
+  std::vector<Geometry::VertexData *> tempElems;
 
   for (auto &i : this->edges) {
-    auto &tempEdge = pointers.getGeometryData()->getEdge(i);
-    tempEdge.getVerts(pointers, tempElems);
-    tempEdge.setAllNodeBoundaryConditionMeshId(pointers, mesIDDisp, 2);
-    tempEdge.setAllNodeBoundaryConditionMeshId(pointers, mesIDWarp, 2);
+    auto &tempEdge = pointers.getGeometryData()->getEdgeData(i);
+    tempEdge.getVerts(tempElems);
+    tempEdge.setAllNodeBoundaryConditionMeshId(mesIDDisp, 2);
+    tempEdge.setAllNodeBoundaryConditionMeshId(mesIDWarp, 2);
   }
   {
-    auto &tempEdge = pointers.getGeometryData()->getEdge(this->edges[0]);
-    tempEdge.getVerts(pointers, tempElems);
-    tempElems[0]->setAllNodeBoundaryConditionMeshId(pointers, mesIDWarp, 0);
+    auto &tempEdge = pointers.getGeometryData()->getEdgeData(this->edges[0]);
+    tempEdge.getVerts(tempElems);
+    tempElems[0]->setAllNodeBoundaryConditionMeshId(mesIDWarp, 0);
   }
   // tempElems[0]->setAllNodeBoundaryConditionMeshId(pointers, mesIDWarp, 1);
   // tempElems[1]->setAllNodeBoundaryConditionMeshId(pointers, mesIDWarp, 2);
   {
-    auto &tempEdge = pointers.getGeometryData()->getEdge(
+    auto &tempEdge = pointers.getGeometryData()->getEdgeData(
         this->edges[this->edges.size() - 1]);
-    tempEdge.getVerts(pointers, tempElems);
-    tempElems[1]->setAllNodeBoundaryConditionMeshId(pointers, mesIDWarp, 0);
+    tempEdge.getVerts(tempElems);
+    tempElems[1]->setAllNodeBoundaryConditionMeshId(mesIDWarp, 0);
   }
 
   std::vector<GenericNodes *> nodes;
@@ -268,8 +269,8 @@ void beamInterfaceElement2D::computeShapes(ptrCol &pointers,
   indexType nnodes2 = 0;
   // ID Mapping of Warping nodes
   for (auto &i : this->edges) {
-    auto &tempEdge = pointers.getGeometryData()->getEdge(i);
-    tempEdge.getNodes(pointers, nodes, mesIDWarp);
+    auto &tempEdge = pointers.getGeometryData()->getEdgeData(i);
+    tempEdge.getNodes(nodes, mesIDWarp);
     for (auto &j : nodes) {
       tempNode = j;
       nodeID = tempNode->getId();
@@ -278,7 +279,7 @@ void beamInterfaceElement2D::computeShapes(ptrCol &pointers,
         ++nnodes;
       }
     }
-    tempEdge.getNodes(pointers, nodes, mesIDDisp);
+    tempEdge.getNodes(nodes, mesIDDisp);
     for (auto &j : nodes) {
       tempNode = j;
       nodeID = tempNode->getId();
@@ -309,14 +310,14 @@ void beamInterfaceElement2D::computeShapes(ptrCol &pointers,
   prec jac;
   Types::Vector3<prec> ycoor;
   Types::Vector3<prec> refcoor;
-  refcoor = pointers.getGeometryData()->getVertex(this->vert).getCoordinates();
+  refcoor = pointers.getGeometryData()->getVertexData(this->vert).getCoordinates();
   for (auto &edge : this->edges) {
-    auto &tempEdge = pointers.getGeometryData()->getEdge(edge);
-    tempEdge.getNodes(pointers, nodes, mesIDWarp);
+    auto &tempEdge = pointers.getGeometryData()->getEdgeData(edge);
+    tempEdge.getNodes(nodes, mesIDWarp);
     for (auto i = 0; i < gp.size(); ++i) {
-      tempEdge.getH1Shapes(pointers, order, shape, shapeDerivative, gp[i]);
+      tempEdge.getH1Shapes(order, shape, shapeDerivative, gp[i]);
       this->getJacobianInterface(pointers, jac, gp[i], edge);
-      ycoor = tempEdge.getCoordinates(pointers, gp[i]);
+      ycoor = tempEdge.getCoordinates(gp[i]);
       ycoor += this->thickness * this->normal;
       ycoor -= refcoor;
       ycoor = trafo * ycoor;
@@ -346,22 +347,22 @@ void beamInterfaceElement2D::computeShapes2(ptrCol &pointers,
                                             const indexType &order) {
   // Constrain Dofs
   pointers.getGeometryData()
-      ->getVertex(this->vert)
-      .setAllNodeBoundaryConditionMeshId(pointers, mesIDDisp, 2);
+      ->getVertexData(this->vert)
+      .setAllNodeBoundaryConditionMeshId(mesIDDisp, 2);
   pointers.getGeometryData()
-      ->getVertex(this->vert)
-      .setAllNodeBoundaryConditionMeshId(pointers, mesIDRot, 1);
+      ->getVertexData(this->vert)
+      .setAllNodeBoundaryConditionMeshId(mesIDRot, 1);
   pointers.getGeometryData()
-      ->getVertex(this->vert)
-      .setAllNodeBoundaryConditionMeshId(pointers, mesIDRot, 2);
+      ->getVertexData(this->vert)
+      .setAllNodeBoundaryConditionMeshId(mesIDRot, 2);
 
-  std::vector<Geometry::Base *> tempElems;
+  std::vector<Geometry::VertexData *> tempElems;
   for (auto &i : this->edges) {
-    auto &tempEdge = pointers.getGeometryData()->getEdge(i);
-    tempEdge.getVerts(pointers, tempElems);
-    tempEdge.setAllNodeBoundaryConditionMeshId(pointers, mesIDDisp, 2);
+    auto &tempEdge = pointers.getGeometryData()->getEdgeData(i);
+    tempEdge.getVerts(tempElems);
+    tempEdge.setAllNodeBoundaryConditionMeshId(mesIDDisp, 2);
     for (auto &j : tempElems) {
-      j->setAllNodeBoundaryConditionMeshId(pointers, mesIDDisp, 2);
+      j->setAllNodeBoundaryConditionMeshId(mesIDDisp, 2);
     }
   }
 
@@ -372,8 +373,8 @@ void beamInterfaceElement2D::computeShapes2(ptrCol &pointers,
   indexType nnodes2 = 0;
   // ID Mapping of Warping nodes
   for (auto &i : this->edges) {
-    auto &tempEdge = pointers.getGeometryData()->getEdge(i);
-    tempEdge.getNodes(pointers, nodes, mesIDDisp);
+    auto &tempEdge = pointers.getGeometryData()->getEdgeData(i);
+    tempEdge.getNodes(nodes, mesIDDisp);
     for (auto &j : nodes) {
       tempNode = j;
       nodeID = tempNode->getId();
@@ -405,14 +406,14 @@ void beamInterfaceElement2D::computeShapes2(ptrCol &pointers,
   prec jac;
   Types::Vector3<prec> ycoor;
   Types::Vector3<prec> refcoor;
-  refcoor = pointers.getGeometryData()->getVertex(this->vert).getCoordinates();
+  refcoor = pointers.getGeometryData()->getVertexData(this->vert).getCoordinates();
   for (auto &edge : this->edges) {
-    auto &tempEdge = pointers.getGeometryData()->getEdge(edge);
-    tempEdge.getNodes(pointers, nodes, mesIDDisp);
+    auto &tempEdge = pointers.getGeometryData()->getEdgeData(edge);
+    tempEdge.getNodes(nodes, mesIDDisp);
     for (auto i = 0; i < gp.size(); ++i) {
-      tempEdge.getH1Shapes(pointers, order, shape, shapeDerivative, gp[i]);
+      tempEdge.getH1Shapes(order, shape, shapeDerivative, gp[i]);
       this->getJacobianInterface(pointers, jac, gp[i], edge);
-      ycoor = tempEdge.getCoordinates(pointers, gp[i]);
+      ycoor = tempEdge.getCoordinates(gp[i]);
       ycoor += this->thickness * this->normal;
       ycoor -= refcoor;
       ycoor = trafo * ycoor;
@@ -548,8 +549,9 @@ void beamInterfaceElement2D::computeShapesLocalWarping(ptrCol &pointers,
                                                        const indexType &order) {
 
   // Get Integration Points, set type and order
-  IntegrationPoints GP = HierAMuS::FiniteElement::beamInterfaceElement2D::ptrCol::getIntegrationPoints(-1);
-  GP.setTypeOrder(IntegrationType::Gauss1D, order);
+  IntegrationPoints GP = this->getIntegrationPoints(pointers);
+  GP.setOrder(order);
+  GP.setNumberOfSections(1);
 
   // Computation of warping shape functions
   Types::VectorX<prec> shape;
@@ -571,14 +573,14 @@ void beamInterfaceElement2D::computeShapesLocalWarping(ptrCol &pointers,
   prec jac;
   Types::Vector3<prec> ycoor;
   Types::Vector3<prec> refcoor;
-  refcoor = pointers.getGeometryData()->getVertex(this->vert).getCoordinates();
+  refcoor = pointers.getGeometryData()->getVertexData(this->vert).getCoordinates();
   std::vector<GenericNodes *> nodes;
   indexType edgeCounter = 0;
   for (auto &edge : this->edges) {
-    auto &tempEdge = pointers.getGeometryData()->getEdge(edge);
-    tempEdge.getNodes(pointers, nodes, meshid);
+    auto &tempEdge = pointers.getGeometryData()->getEdgeData(edge);
+    tempEdge.getNodes(nodes, meshid);
     for (auto i = 0; i < GP.getTotalGP(); ++i) {
-      tempEdge.getH1Shapes(pointers, order, shape, shapeDerivative,
+      tempEdge.getH1Shapes(order, shape, shapeDerivative,
                            GP.getXi(i));
       // jac = this->getJacEta(pointers, edge);
       this->getJacobianInterface(pointers, jac, GP.getXi(i), edge);
@@ -625,7 +627,7 @@ void beamInterfaceElement2D::getWarpingShapes(
   shapeWxy.setZero();
   shapeWyy.setZero();
 
-  auto &tEdge = pointers.getGeometryData()->getEdge(this->edges[edgeNum]);
+  auto &tEdge = pointers.getGeometryData()->getEdgeData(this->edges[edgeNum]);
 
   prec y = this->getZCoordinate(pointers, edgeNum, eta);
 
@@ -641,8 +643,8 @@ void beamInterfaceElement2D::getWarpingShapes(
 
   Types::Vector3<prec> c1;
   Types::Vector3<prec> c2;
-  c1 = tEdge.getCoordinates(pointers, -prec(1));
-  c2 = tEdge.getCoordinates(pointers, prec(1));
+  c1 = tEdge.getCoordinates(-prec(1));
+  c2 = tEdge.getCoordinates(prec(1));
   auto dir = c2 - c1;
 
   prec jacEdge = dir.transpose() * this->tangent;
@@ -650,11 +652,11 @@ void beamInterfaceElement2D::getWarpingShapes(
 
   Types::VectorX<prec> shapeEdge;
   Types::VectorX<prec> diffShapeEdge;
-  tEdge.getH1Shapes(pointers, order, shapeEdge, diffShapeEdge, eta);
+  tEdge.getH1Shapes(order, shapeEdge, diffShapeEdge, eta);
   diffShapeEdge /= jacEdge;
 
   std::vector<GenericNodes *> nodes;
-  tEdge.getNodes(pointers, nodes, meshId);
+  tEdge.getNodes(nodes, meshId);
   indexType cc = 0;
   for (auto &nn : nodes) {
     indexType pos = this->NodeMapWarp[nn->getId()];
@@ -673,8 +675,9 @@ void beamInterfaceElement2D::computeSurfaceDispShapes(ptrCol &pointers,
                                                       const indexType &order) {
 
   // Get Integration Points, set type and order
-  IntegrationPoints GP = HierAMuS::FiniteElement::beamInterfaceElement2D::ptrCol::getIntegrationPoints(-1);
-  GP.setTypeOrder(IntegrationType::Gauss1D, order + 1);
+  IntegrationPoints GP = this->getIntegrationPoints(pointers);
+  GP.setOrder(order + 1);
+  GP.setNumberOfSections(1);
 
   // Computation of warping shape functions
   Types::VectorX<prec> shape;
@@ -697,12 +700,12 @@ void beamInterfaceElement2D::computeSurfaceDispShapes(ptrCol &pointers,
   prec Iz = prec(0);
   Types::Vector3<prec> ycoor;
   for (auto &edge : this->edges) {
-    auto &tedge = geoData->getEdge(edge);
-    tedge.getNodes(pointers, nodes, meshID);
+    auto &tedge = geoData->getEdgeData(edge);
+    tedge.getNodes(nodes, meshID);
     for (auto i = 0; i < GP.getTotalGP(); ++i) {
-      tedge.getH1Shapes(pointers, order, shape, shapeDerivative, GP.getXi(i));
+      tedge.getH1Shapes(order, shape, shapeDerivative, GP.getXi(i));
       this->getJacobianInterface(pointers, jac, GP.getXi(i), edge);
-      ycoor = tedge.getCoordinates(pointers, GP.getXi(i));
+      ycoor = tedge.getCoordinates(GP.getXi(i));
       ycoor -= this->refCoordinates;
       prec y = ycoor.transpose() * this->tangent;
 
@@ -774,9 +777,9 @@ auto beamInterfaceElement2D::getJacXi() -> prec {
 
 auto beamInterfaceElement2D::getJacEta(ptrCol &pointers, indexType edgeNum)
     -> prec {
-  auto &tEdge = pointers.getGeometryData()->getEdge(this->edges[edgeNum]);
-  auto c1 = tEdge.getCoordinates(pointers, -prec(1));
-  auto c2 = tEdge.getCoordinates(pointers, prec(1));
+  auto &tEdge = pointers.getGeometryData()->getEdgeData(this->edges[edgeNum]);
+  auto c1 = tEdge.getCoordinates(-prec(1));
+  auto c2 = tEdge.getCoordinates(prec(1));
 
   auto dir = c2 - c1;
   prec jac = dir.transpose() * this->tangent;
@@ -797,8 +800,8 @@ void beamInterfaceElement2D::getNodesOnVert(ptrCol &pointers,
                                             std::vector<GenericNodes *> &Nodes,
                                             const indexType &meshID) {
   Nodes.clear();
-  auto &tvert = pointers.getGeometryData()->getVertex(this->vert);
-  tvert.getNodesOfSet(pointers, Nodes, meshID);
+  auto &tvert = pointers.getGeometryData()->getVertexData(this->vert);
+  Nodes = tvert.getNodesOfSet(meshID);
 }
 
 auto beamInterfaceElement2D::getNumberOfSolidNodes(ptrCol &pointers,
@@ -827,7 +830,7 @@ void beamInterfaceElement2D::setBCOnNodeSolid(ptrCol &pointers,
   this->getNodesOnSolid(pointers, Nodes, meshID);
   GenericNodes *tnode;
   tnode = Nodes[node];
-  tnode->setBoundaryCondition(pointers, dof);
+  tnode->setBoundaryCondition(dof);
 }
 
 void beamInterfaceElement2D::setBCOnVert(ptrCol &pointers,
@@ -850,8 +853,8 @@ void beamInterfaceElement2D::getDofs(ptrCol &pointers,
 
   indexType counter = 0;
   for (auto &i : this->edges) {
-    auto &tedge = pointers.getGeometryData()->getEdge(i);
-    tedge.getNodes(pointers, tnodes, meshIDDisp);
+    auto &tedge = pointers.getGeometryData()->getEdgeData(i);
+    tedge.getNodes(tnodes, meshIDDisp);
     for (auto &j : tnodes) {
       if (counter == this->dofmapDisp[j->getId()]) {
         ++counter;
@@ -861,8 +864,8 @@ void beamInterfaceElement2D::getDofs(ptrCol &pointers,
   }
   counter = 0;
   for (auto &i : this->edges) {
-    auto &tedge = pointers.getGeometryData()->getEdge(i);
-    tedge.getNodes(pointers, tnodes, meshIDWarp);
+    auto &tedge = pointers.getGeometryData()->getEdgeData(i);
+    tedge.getNodes(tnodes, meshIDWarp);
     for (auto &j : tnodes) {
       if (counter == this->dofmapWarp[j->getId()]) {
         ++counter;
@@ -870,16 +873,15 @@ void beamInterfaceElement2D::getDofs(ptrCol &pointers,
       }
     }
   }
-  auto &tvert = pointers.getGeometryData()->getVertex(this->vert);
-  tvert.getNodesOfSet(pointers, tnodes, meshIDDisp);
+  auto &tvert = pointers.getGeometryData()->getVertexData(this->vert);
+  tnodes = tvert.getNodesOfSet(meshIDDisp);
   orderedNodeList.push_back(tnodes[0]);
-  tvert.getNodesOfSet(pointers, tnodes, meshIDRot);
+  tnodes = tvert.getNodesOfSet(meshIDRot);
   orderedNodeList.push_back(tnodes[0]);
 
-  std::vector<DegreeOfFreedom *> tdofs;
 
   for (auto &i : orderedNodeList) {
-    i->getDegreesOfFreedom(pointers, tdofs);
+    auto tdofs = i->getDegreesOfFreedom();
     for (auto &j : tdofs) {
       Dofs.push_back(j);
     }
@@ -896,8 +898,8 @@ void beamInterfaceElement2D::getDofs2(ptrCol &pointers,
 
   indexType counter = 0;
   for (auto &i : this->edges) {
-    auto &tedge = pointers.getGeometryData()->getEdge(i);
-    tedge.getNodes(pointers, tnodes, meshIDDisp);
+    auto &tedge = pointers.getGeometryData()->getEdgeData(i);
+    tedge.getNodes(tnodes, meshIDDisp);
     for (auto &j : tnodes) {
       if (counter == this->dofmapDisp[j->getId()]) {
         ++counter;
@@ -906,16 +908,15 @@ void beamInterfaceElement2D::getDofs2(ptrCol &pointers,
     }
   }
 
-  auto &tvert = pointers.getGeometryData()->getVertex(this->vert);
-  tvert.getNodesOfSet(pointers, tnodes, meshIDDisp);
+  auto &tvert = pointers.getGeometryData()->getVertexData(this->vert);
+  tnodes = tvert.getNodesOfSet(meshIDDisp);
   orderedNodeList.push_back(tnodes[0]);
-  tvert.getNodesOfSet(pointers, tnodes, meshIDRot);
+  tnodes = tvert.getNodesOfSet(meshIDRot);
   orderedNodeList.push_back(tnodes[0]);
 
-  std::vector<DegreeOfFreedom *> tdofs;
 
   for (auto &i : orderedNodeList) {
-    i->getDegreesOfFreedom(pointers, tdofs);
+    auto tdofs = i->getDegreesOfFreedom();
     for (auto &j : tdofs) {
       Dofs.push_back(j);
     }
@@ -942,7 +943,7 @@ auto beamInterfaceElement2D::getVertexId(ptrCol &pointers, indexType num)
 }
 
 auto beamInterfaceElement2D::getVertex(ptrCol &pointers, indexType num)
-    -> Geometry::Vertex & {
+    -> Geometry::VertexData & {
 
   auto *ele = this->getInterfaceGeoElem(pointers);
   return ele->getVertex(pointers);
@@ -951,13 +952,13 @@ auto beamInterfaceElement2D::getVertex(ptrCol &pointers, indexType num)
 
 void beamInterfaceElement2D::computeGeometry(ptrCol &pointers) {
   auto geoData = pointers.getGeometryData();
-  auto &tEdge = geoData->getEdge(this->edges[0]);
+  auto &tEdge = geoData->getEdgeData(this->edges[0]);
 
   Types::Vector3<prec> Coordinates1;
   Types::Vector3<prec> Coordinates2;
 
-  Coordinates1 = tEdge.getCoordinates(pointers, -1.0);
-  Coordinates2 = tEdge.getCoordinates(pointers, 1.0);
+  Coordinates1 = tEdge.getCoordinates(-1.0);
+  Coordinates2 = tEdge.getCoordinates(1.0);
 
   this->tangent = Coordinates2 - Coordinates1;
   this->tangent /= this->tangent.norm();
@@ -965,7 +966,7 @@ void beamInterfaceElement2D::computeGeometry(ptrCol &pointers) {
   this->normal(1) = -this->tangent(0);
   this->normal(0) = this->tangent(1);
 
-  Coordinates2 = geoData->getVertex(this->vert).getCoordinates();
+  Coordinates2 = geoData->getVertexData(this->vert).getCoordinates();
   this->refCoordinates = Coordinates2 - Coordinates1;
   this->thickness = this->refCoordinates.dot(this->normal);
 
@@ -980,14 +981,13 @@ beamInterfaceElement2D::getH1Dofs(ptrCol &pointers,
 void beamInterfaceElement2D::getJacobianInterface(ptrCol &pointers,
                                                   prec &jacobi, const prec &xsi,
                                                   const indexType &edgeNum) {
-  auto &tempEdge = pointers.getGeometryData()->getEdge(edgeNum);
+  auto &tempEdge = pointers.getGeometryData()->getEdgeData(edgeNum);
 
   Types::Vector3<prec> c1;
   Types::Vector3<prec> c2;
-  std::vector<Geometry::Base *> verts;
-  tempEdge.getVerts(pointers, verts);
-  c1 = verts[0]->getCoordinates();
-  c2 = verts[1]->getCoordinates();
+  std::vector<Geometry::GeometryBaseData *> verts;
+  c1 = tempEdge.getVertex(0)->getCoordinates();
+  c2 = tempEdge.getVertex(1)->getCoordinates();
   jacobi = (c2 - c1).norm() / prec(2);
 }
 
@@ -1001,23 +1001,22 @@ void beamInterfaceElement2D::setShapes(ptrCol &pointers,
                                        const indexType &mesIDRot,
                                        const indexType &order) {
   for (auto &i : this->edges) {
-    auto &tedge = pointers.getGeometryData()->getEdge(i);
-    tedge.setH1Shapes(pointers, mesIDDisp, order, NodeTypes::displacement);
-    tedge.setH1Shapes(pointers, mesIDWarp, order, NodeTypes::displacement);
+    auto &tedge = pointers.getGeometryData()->getEdgeData(i);
+    tedge.setH1Shapes(mesIDDisp, order, NodeTypes::displacement);
+    tedge.setH1Shapes(mesIDWarp, order, NodeTypes::displacement);
   }
-  auto tvert = pointers.getGeometryData()->getVertex(this->vert);
-  tvert.setNodeSet(pointers, mesIDDisp, 1, NodeTypes::displacement);
-  tvert.setNodeSet(pointers, mesIDRot, 1, NodeTypes::displacement);
+  auto tvert = pointers.getGeometryData()->getVertexData(this->vert);
+  tvert.setNodeSet(mesIDDisp, 1, NodeTypes::displacement);
+  tvert.setNodeSet(mesIDRot, 1, NodeTypes::displacement);
 
-  std::vector<Geometry::Base *> tverts;
+  std::vector<Geometry::GeometryBaseData *> tverts;
 
-  auto &tedge = pointers.getGeometryData()->getEdge(this->edges[0]);
-  tedge.getVerts(pointers, tverts);
+  auto &tedge = pointers.getGeometryData()->getEdgeData(this->edges[0]);
   Types::Vector3<prec> c1;
   Types::Vector3<prec> c2;
   Types::Vector3<prec> c3;
-  c1 = tverts[0]->getCoordinates();
-  c2 = tverts[1]->getCoordinates();
+  c1 = tedge.getVertex(0)->getCoordinates();
+  c2 = tedge.getVertex(1)->getCoordinates();
   c3 = c2 - c1;
   c3 /= c3.norm();
   std::vector<indexType> ind{0, 1};
@@ -1028,7 +1027,7 @@ void beamInterfaceElement2D::setShapes(ptrCol &pointers,
   this->normal(0) = c3(1);
   this->normal(1) = -c3(0);
 
-  c1 = pointers.getGeometryData()->getVertex(this->vert).getCoordinates();
+  c1 = pointers.getGeometryData()->getVertexData(this->vert).getCoordinates();
   c1 -= c2;
   this->thickness = c1.dot(this->normal);
   // this->thickness = c1.transpose() * this->normal;
@@ -1039,22 +1038,22 @@ void beamInterfaceElement2D::setShapes2(ptrCol &pointers,
                                         const indexType &mesIDRot,
                                         const indexType &order) {
   for (auto &i : this->edges) {
-    auto &tedge = pointers.getGeometryData()->getEdge(i);
-    tedge.setH1Shapes(pointers, mesIDDisp, order, NodeTypes::displacement);
+    auto &tedge = pointers.getGeometryData()->getEdgeData(i);
+    tedge.setH1Shapes(mesIDDisp, order, NodeTypes::displacement);
   }
-  auto tvert = pointers.getGeometryData()->getVertex(this->vert);
-  tvert.setNodeSet(pointers, mesIDDisp, 1, NodeTypes::displacement);
-  tvert.setNodeSet(pointers, mesIDRot, 1, NodeTypes::displacement);
+  auto tvert = pointers.getGeometryData()->getVertexData(this->vert);
+  tvert.setNodeSet(mesIDDisp, 1, NodeTypes::displacement);
+  tvert.setNodeSet(mesIDRot, 1, NodeTypes::displacement);
 
-  std::vector<Geometry::Base *> tverts;
+  std::vector<Geometry::VertexData *> tverts;
 
-  auto &tedge = pointers.getGeometryData()->getEdge(this->edges[0]);
-  tedge.getVerts(pointers, tverts);
+  auto &tedge = pointers.getGeometryData()->getEdgeData(this->edges[0]);
+  tedge.getVerts(tverts);
   Types::Vector3<prec> c1;
   Types::Vector3<prec> c2;
   Types::Vector3<prec> c3;
-  c1 = tverts[0]->getCoordinates();
-  c2 = tverts[1]->getCoordinates();
+  c1 = tedge.getVertex(0)->getCoordinates(); // tverts[0]->getCoordinates();
+  c2 = tedge.getVertex(1)->getCoordinates(); // tverts[1]->getCoordinates();
   c3 = c2 - c1;
   c3 /= c3.norm();
   std::vector<indexType> ind{0, 1};
@@ -1065,28 +1064,10 @@ void beamInterfaceElement2D::setShapes2(ptrCol &pointers,
   this->normal(0) = c3(1);
   this->normal(1) = -c3(0);
 
-  c1 = pointers.getGeometryData()->getVertex(this->vert).getCoordinates();
+  c1 = pointers.getGeometryData()->getVertexData(this->vert).getCoordinates();
   c1 -= c2;
   this->thickness = c1.dot(this->normal);
   // this->thickness = c1.transpose() * this->normal;
-}
-
-void beamInterfaceElement2D::getVtkCell(PointerCollection &ptrCol,
-                                        vtkSmartPointer<vtkCell> &cell) {
-#ifdef USE_VTK
-  // vtkSmartPointer<vtkCell> line = vtkSmartPointer<vtkPolyLine>::New();
-  // GenericGeometryElement *geoEdge;
-  // GeometryData *geoData;
-  // std::vector<indexType> vertNums;
-  // geoData = ptrCol.getGeometryData();
-  // geoEdge = geoData->getEdge(this->edge);
-  // geoEdge->getVerts(vertNums);
-  // line->GetPointIds()->SetNumberOfIds(2);
-  // line->GetPointIds()->SetId(0, vertNums[0]);
-  // line->GetPointIds()->SetId(1, vertNums[1]);
-
-  // cell = line;
-#endif // USE_VTK
 }
 
 void beamInterfaceElement2D::toParaviewAdapter(PointerCollection &ptrCol,
@@ -1106,11 +1087,11 @@ void beamInterfaceElement2D::toParaviewAdapter(PointerCollection &ptrCol,
     std::map<indexType, indexType> lIdGIdMap;
     indexType pos = 0;
     for (auto &i : this->edges) {
-      auto &tedge = ptrCol.getGeometryData()->getEdge(i);
+      auto &tedge = ptrCol.getGeometryData()->getEdgeData(i);
       for (auto vn = 0; vn < tedge.getNumberOfVerts(); ++vn) {
-        auto &Vert = tedge.getVertex(ptrCol, vn);
-        if (lIdGIdMap.find(Vert.getId()) == lIdGIdMap.end()) {
-          lIdGIdMap[Vert.getId()] = pos;
+        auto Vert = tedge.getVertex(vn);
+        if (lIdGIdMap.find(Vert->getId()) == lIdGIdMap.end()) {
+          lIdGIdMap[Vert->getId()] = pos;
           ++pos;
         }
       }
@@ -1206,11 +1187,11 @@ void beamInterfaceElement2D::toParaviewAdapter(PointerCollection &ptrCol,
     std::map<indexType, indexType> lIdGIdMap;
     indexType pos = 0;
     for (auto &i : this->edges) {
-      auto &tEdge = ptrCol.getGeometryData()->getEdge(i);
+      auto &tEdge = ptrCol.getGeometryData()->getEdgeData(i);
       for (auto vn = 0; vn < tEdge.getNumberOfVerts(); ++vn) {
-        auto &Vert = tEdge.getVertex(ptrCol, vn);
-        if (lIdGIdMap.find(Vert.getId()) == lIdGIdMap.end()) {
-          lIdGIdMap[Vert.getId()] = pos;
+        auto Vert = tEdge.getVertex(vn);
+        if (lIdGIdMap.find(Vert->getId()) == lIdGIdMap.end()) {
+          lIdGIdMap[Vert->getId()] = pos;
           ++pos;
         }
       }
@@ -1250,11 +1231,11 @@ void beamInterfaceElement2D::toParaviewAdapter(PointerCollection &ptrCol,
 
     std::vector<prec> data;
 
-    Geometry::Vertex *Vert;
+    Geometry::VertexData *Vert;
     for (auto i = 0; i < this->edges.size(); ++i) {
-      auto &tEdge = ptrCol.getGeometryData()->getEdge(this->edges[i]);
+      auto &tEdge = ptrCol.getGeometryData()->getEdgeData(this->edges[i]);
       prec y = this->getZCoordinate(ptrCol, i, -1);
-      Vert = &tEdge.getVertex(ptrCol, 0);
+      Vert = tEdge.getVertex(0);
       indexType parId = lIdGIdMap[Vert->getId()] + nnodes;
       data.clear();
       data.push_back(WarpingFunction(3 * i));
@@ -1272,7 +1253,7 @@ void beamInterfaceElement2D::toParaviewAdapter(PointerCollection &ptrCol,
       data.push_back((WarpingFunction(3 * i + 2)));
       catalyst.setPointData(0, matNum, parId, data, 3, "SolutionM1N0");
 
-      Vert = &tEdge.getVertex(ptrCol, 1);
+      Vert = tEdge.getVertex(1);
       parId = (lIdGIdMap[Vert->getId()] + nnodes);
       data.clear();
       data.push_back((WarpingFunction(3 * (i + 1))));
@@ -1290,14 +1271,14 @@ void beamInterfaceElement2D::toParaviewAdapter(PointerCollection &ptrCol,
       data.push_back((WarpingFunction(3 * (i + 1) + 2)));
       catalyst.setPointData(0, matNum, parId, data, 3, "SolutionM1N0");
 
-      Vert = &tEdge.getVertex(ptrCol, 0);
+      Vert = tEdge.getVertex(0);
       parId = (lIdGIdMap[Vert->getId()]);
       data.clear();
       data.push_back((DisplacementSolution(3 * i)));
       data.push_back((DisplacementSolution(3 * i + 1)));
       data.push_back((DisplacementSolution(3 * i + 2)));
       catalyst.setPointData(0, matNum, parId, data, 3, "SolutionM1N0");
-      Vert = &tEdge.getVertex(ptrCol, 1);
+      Vert = tEdge.getVertex(1);
       parId = (lIdGIdMap[Vert->getId()]);
       data.clear();
       data.push_back((DisplacementSolution(3 * (i + 1))));
@@ -1463,8 +1444,22 @@ auto beamInterfaceElement2D::getThickness(PointerCollection &pointers) -> prec {
 }
 
 auto beamInterfaceElement2D::getEdge(PointerCollection &pointers,
-                                                 indexType localNumber) -> Geometry::Edges & {
-  return pointers.getGeometryData()->getEdge(this->edges[localNumber]);
+                                                 indexType localNumber) -> Geometry::EdgesData & {
+  return pointers.getGeometryData()->getEdgeData(this->edges[localNumber]);
+}
+
+auto beamInterfaceElement2D::getElementType() -> Elementtypes {
+  return Elementtypes::beamInterfaceElement2D;
+}
+
+void beamInterfaceElement2D::set_pointers(PointerCollection &pointers) {
+}
+
+auto beamInterfaceElement2D::getIntegrationPoints(ptrCol &pointers)
+    -> IntegrationPoints {
+  auto geoElem = pointers.getGeometryData()->getSpecial(interfaceElementNumber);
+  auto GP = geoElem->getIntegrationPoints(this->m_id);
+  return GP;
 }
 
 } // namespace HierAMuS

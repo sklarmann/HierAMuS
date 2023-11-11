@@ -100,6 +100,10 @@ class finiteElements:
             elem.setSpecial(specialNumber)
         else:
             elem.setSpecial([specialNumber])
+        elem.setEdges(edgeList)
+        if type(vertNum) != list:
+            vertNum = [vertNum]
+        elem.setVerts(vertNum)
         elem.setMatrial(self.materials.getMaterial(materialNumber))
 
 

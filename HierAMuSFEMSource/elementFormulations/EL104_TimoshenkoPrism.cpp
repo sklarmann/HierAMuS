@@ -3,10 +3,11 @@
 // SPDX-License-Identifier: BSD-3-Clause
 
 #include "MatrixTypes.h"
-#include "equations/DegreeOfFreedom.h"
+#include "DegreeOfFreedom.h"
 #include <iostream>
 #include <limits>
 
+#include "control/ParameterList.h"
 
 #include <elementFormulations/EL104_TimoshenkoPrism.h>
 #include <elementFormulations/GenericElementFormulation.h>
@@ -15,12 +16,9 @@
 #include <finiteElements/GenericFiniteElement.h>
 #include <finiteElements/LinearPrism.h>
 
-#include <geometry/Base.h>
-#include <geometry/Vertex.h>
+#include <geometry/GeometryBaseData.h>
+#include <geometry/VertexData.h>
 
-#include <equations/EquationHandler.h>
-#include <equations/GenericNodes.h>
-#include <equations/NodeSet.h>
 
 #include <solver/GenericSolutionState.h>
 
@@ -39,7 +37,7 @@
 namespace HierAMuS::Elementformulations {
 
 EL104_TimoshenkoPrism::EL104_TimoshenkoPrism(PointerCollection *ptrCol)
-    : GenericElementFormulation(ptrCol) {}
+    : GenericElementFormulationInterface(ptrCol) {}
 
 EL104_TimoshenkoPrism::~EL104_TimoshenkoPrism() = default;
 
@@ -64,15 +62,13 @@ void EL104_TimoshenkoPrism::readData(PointerCollection &pointers,
 }
 
 void EL104_TimoshenkoPrism::setDegreesOfFreedom(
-  PointerCollection& pointers, FiniteElement::GenericFiniteElement *elem) {
-  switch (elem->getType()) {
+    PointerCollection &pointers, FiniteElement::LinearPrism &elem) {
+  switch (elem.getType()) {
   case FiniteElement::Elementtypes::LinearPrism: {
-    FiniteElement::LinearPrism *el =
-        static_cast<FiniteElement::LinearPrism *>(elem);
-    el->setH1BeamShapes(pointers, this->meshIdDisp, this->intOrderDisp);
-    el->setH1BeamShapes(pointers, this->meshIdRot, this->intOrderDisp);
+    elem.setH1BeamShapes(pointers, this->meshIdDisp, this->intOrderDisp);
+    elem.setH1BeamShapes(pointers, this->meshIdRot, this->intOrderDisp);
     
-    auto GP = el->getIntegrationPoints(pointers);
+    auto GP = elem.getIntegrationPoints(pointers);
     
     GP.setTypeOrder(IntegrationType::Gauss1D, this->intOrderDisp);
 
@@ -105,16 +101,19 @@ auto EL104_TimoshenkoPrism::getDofs(PointerCollection& pointers, FiniteElement::
   return Dofs;
 }
 
+void EL104_TimoshenkoPrism::AdditionalOperations(
+    PointerCollection &pointers, FiniteElement::LinearPrism &elem) {}
+
 void EL104_TimoshenkoPrism::setTangentResidual(
   PointerCollection& pointers,
-  FiniteElement::GenericFiniteElement *elem,
+  FiniteElement::LinearPrism &elem,
   Eigen::Matrix<prec, Eigen::Dynamic, Eigen::Dynamic> &stiffness,
   Eigen::Matrix<prec, Eigen::Dynamic, 1> &residual, std::vector<DegreeOfFreedom *> &Dofs) {
 
-  switch (elem->getType()) {
+  switch (elem.getType()) {
   case FiniteElement::Elementtypes::LinearPrism: {
     FiniteElement::LinearPrism *passelem =
-        static_cast<FiniteElement::LinearPrism *>(elem);
+        static_cast<FiniteElement::LinearPrism *>(&elem);
 
     switch (this->mode) {
     case 1: // Displacement based formulation
@@ -313,7 +312,7 @@ void EL104_TimoshenkoPrism::setTangentResidualPrismHuWashizuFormulation(
 
   auto dmat = this->getMaterialTangent();
 
-  auto GP = pointers.getIntegrationPoints(-1);
+  auto GP = IntegrationPointsManagement::getIntegrationsPoints(-1);
   GP.setTypeOrder(IntegrationType::Gauss1D, this->intOrderDisp);
 
   // R = [A1, A2, A3] as column vectors
@@ -948,7 +947,7 @@ void EL104_TimoshenkoPrism::setTangentResidualPrismgeononlinearDispFormulation(
 
   auto dmat = this->getMaterialTangent();
 
-  auto GP = pointers.getIntegrationPoints(-1);
+  auto GP = IntegrationPointsManagement::getIntegrationsPoints(-1);
   GP.setTypeOrder(IntegrationType::Gauss1D, this->intOrderDisp);
 
   // R = [A1, A2, A3] as column vectors
@@ -1033,7 +1032,7 @@ void EL104_TimoshenkoPrism::
   Eigen::Matrix<prec, Eigen::Dynamic, 1> &residual, std::vector<DegreeOfFreedom *> &Dofs) {
   auto dmat = this->getMaterialTangent();
 
-  auto GP = pointers.getIntegrationPoints(-1);
+  auto GP = IntegrationPointsManagement::getIntegrationsPoints(-1);
   GP.setTypeOrder(IntegrationType::Gauss1D, this->intOrderDisp);
 
 
@@ -1194,13 +1193,11 @@ void EL104_TimoshenkoPrism::
 };
 
 void EL104_TimoshenkoPrism::toParaviewAdaper(
-    PointerCollection &pointers, FiniteElement::GenericFiniteElement *elem,
+    PointerCollection &pointers, FiniteElement::LinearPrism &elem,
     vtkPlotInterface &paraviewAdapter, ParaviewSwitch control) {
-  switch (elem->getType()) {
+  switch (elem.getType()) {
   case FiniteElement::Elementtypes::LinearPrism: {
-    FiniteElement::LinearPrism *passElem;
-    passElem = static_cast<FiniteElement::LinearPrism *>(elem);
-    this->toParaviewPrism(pointers, passElem, paraviewAdapter, control);
+    this->toParaviewPrism(pointers, &elem, paraviewAdapter, control);
   } break;
   default:
     throw std::runtime_error("Paraview not implemented in this "
@@ -1250,7 +1247,7 @@ void EL104_TimoshenkoPrism::toParaviewPrism(PointerCollection &pointers,
     bases.push_back(elem->getStartTriad(pointers));
     bases.push_back(elem->getEndTriad(pointers));
 
-    Geometry::Vertex *V1, *V2;
+    Geometry::VertexData *V1, *V2;
     V1 = &elem->getVertex(pointers, 0);
     V2 = &elem->getVertex(pointers, 3);
 
@@ -1292,7 +1289,7 @@ void EL104_TimoshenkoPrism::toParaviewPrism(PointerCollection &pointers,
       vsol.push_back(dispSolution(1 + 3 * localVertNumber));
       vsol.push_back(dispSolution(2 + 3 * localVertNumber));
 
-      Geometry::Vertex *Vert;
+      Geometry::VertexData *Vert;
       Vert = &elem->getVertex(pointers, vertNumber);
 
       paraviewAdapter.setPointData(0, matNum, Vert->getId(), vsol, 3,
@@ -1306,7 +1303,7 @@ void EL104_TimoshenkoPrism::toParaviewPrism(PointerCollection &pointers,
 
       vertSol += skewMat * bases[localVertNumber].block(0, 1, 3, 1);
 
-      Geometry::Vertex *Vert2;
+      Geometry::VertexData *Vert2;
       Vert2 = &elem->getVertex(pointers, vertNumber + 1);
 
       vsol.clear();
@@ -1376,7 +1373,7 @@ void EL104_TimoshenkoPrism::toParaviewPrism(PointerCollection &pointers,
     Types::MatrixXX<prec> stiffness;
     Types::VectorX<prec> residual;
 
-    this->setTangentResidual(pointers, elem, stiffness, residual, Dofs);
+    this->setTangentResidual(pointers, *elem, stiffness, residual, Dofs);
 
     indexType vertNumber = 0;
     for (auto i = 0; i < 2; ++i) {

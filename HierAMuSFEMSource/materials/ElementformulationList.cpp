@@ -26,9 +26,10 @@
 #include <elementFormulations/EL301_Piezo3DLinear.h>
 #include "elementFormulations/EL302_BeamCoupling3D.h"
 #include "elementFormulations/EL303_ThermoMechanikSolid3D.h"
+#include "elementFormulations/EL304_QPVolumeElement.h"
 #include "elementFormulations/EL307_VolumeConstraint.h"
 
-#include <control/ParameterList.h>
+#include "control/ParameterList.h"
 
 
 namespace HierAMuS::Materials {
@@ -40,7 +41,7 @@ ElementFormulationList::~ElementFormulationList() = default;
 void ElementFormulationList::addElementFormulation(
     PointerCollection &pointers, indexType number, indexType elementFormulation,
     ParameterList &elementparameters) {
-  while (number + 1 > this->Elements.size()) {
+  while (number + 1 > static_cast<indexType>(this->Elements.size())) {
     this->Elements.push_back(nullptr);
   }
 
@@ -124,6 +125,11 @@ void ElementFormulationList::addElementFormulation(
         std::make_shared<Elementformulations::EL303_ThermoMechanikSolid3D>(
             &pointers);
     break;
+  case 304:
+    this->Elements[number] =
+        std::make_shared<Elementformulations::EL304_QPVolumeElement>(
+            &pointers);
+    break;
   case 307:
     this->Elements[number] =
         std::make_shared<Elementformulations::EL307_VolumeConstraint>(
@@ -144,7 +150,7 @@ ElementFormulationList::getElementFormulation(indexType number) {
 }
 void ElementFormulationList::addElementFormulation(indexType number,
     std::shared_ptr<Elementformulations::GenericElementFormulation> element) {
-  while (number + 1 > this->Elements.size()) {
+  while (number + 1 > static_cast<indexType>(this->Elements.size())) {
     this->Elements.push_back(nullptr);
   }
   this->Elements[number] = element;

@@ -7,10 +7,9 @@
 #pragma once
 
 
-#include<control/OutputHandler.h>
-#include <map>
+#include "control/OutputHandler.h"
 
-#include <algorithm>
+#include <map>
 #include <string>
 
 

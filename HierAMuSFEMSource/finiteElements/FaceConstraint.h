@@ -5,13 +5,16 @@
 
 #pragma once
 
-#include "Face.h"
+#include "GenericFiniteElementInterface.h"
 #include "MatrixTypes.h"
-#include "pointercollection/pointercollection.h"
 #include "shapefunctions/IntegrationsPoints/IntegrationPoints.h"
 
+namespace HierAMuS {
+class PointerCollection;
+}
+
 namespace HierAMuS::FiniteElement {
-class FaceConstraint : public Face {
+class FaceConstraint : public GenericFiniteElementInterface<FaceConstraint> {
   using ptrCol = PointerCollection;
 
 public:
@@ -19,6 +22,7 @@ public:
   ~FaceConstraint() override;
 
   auto getType() -> Elementtypes override;
+  void set_pointers(PointerCollection &pointers) override;
 
   void setVerts(std::vector<indexType> &vertsIn) override;
   void setFace(indexType faceIn) override;
@@ -26,11 +30,11 @@ public:
       -> std::vector<indexType> override;
 
   auto getVertex(ptrCol &pointers, indexType localNumber)
-      -> Geometry::Vertex & override;
+      -> Geometry::VertexData & override;
   auto getEdge(ptrCol &pointers, indexType localNumber)
-      -> Geometry::Edges & override;
+      -> Geometry::EdgesData & override;
   auto getFace(ptrCol &pointers, indexType localNumber)
-      -> Geometry::Faces * override;
+      -> Geometry::FacesData * override;
 
   auto getLocalCoordinateSystem(PointerCollection &pointers)
       -> Types::Matrix33<prec>;
@@ -44,9 +48,7 @@ public:
 
   // Geometric mapping
   auto getJacobian(ptrCol &pointers, IntegrationPoint &IntegrationPt)
-      -> Types::MatrixXX<prec> override;
-  void getJacobian(ptrCol &pointers, Types::Matrix22<prec> &jacobi, prec xsi,
-                   prec eta) override;
+      -> Types::MatrixXX<prec>;
 
   // H1 Shapes
   void setH1Shapes(ptrCol &pointers, indexType meshid,
@@ -55,38 +57,31 @@ public:
                  indexType meshID, indexType order) override;
   auto getH1Nodes(ptrCol &pointers, indexType meshID, indexType order)
       -> std::vector<GenericNodes *> override;
-  void getH1Shapes(ptrCol &pointers, indexType order,
-                   Types::MatrixXX<prec> &jacobi, Types::VectorX<prec> &shape,
-                   Types::MatrixXX<prec> &shapeDerivative,
-                   IntegrationPoint &IntegrationPt) override;
-  void getH1Shapes(ptrCol &pointers, indexType order,
-                   Types::Matrix22<prec> &jacobi, Types::VectorX<prec> &shape,
-                   Types::Matrix2X<prec> &dshape, prec xi, prec eta) override;
 
   auto getH1Shapes(ptrCol &pointers, indexType order,
                    Types::MatrixXX<prec> &jacobi,
                    IntegrationPoint &IntegrationPt)
-      -> Geometry::H1Shapes override;
+      -> Geometry::H1Shapes;
 
   auto getIntegrationPoints(ptrCol &pointers) -> IntegrationPoints override;
 
   // Paraview
   void geometryToParaview(PointerCollection &pointers,
                           vtkPlotInterface &paraviewAdapter, indexType mainMesh,
-                          indexType subMesh) override;
+                          indexType subMesh);
   void computeWeightsParaview(PointerCollection &pointers,
                               vtkPlotInterface &paraviewAdapter,
-                              indexType mainMesh, indexType subMesh) override;
+                              indexType mainMesh, indexType subMesh);
   void H1SolutionToParaview(PointerCollection &pointers,
                             vtkPlotInterface &paraviewAdapter,
                             indexType mainMesh, indexType subMesh,
                             indexType meshId, indexType order,
-                            std::string name) override;
+                            std::string name);
   void projectDataToParaviewVertices(
       PointerCollection &pointers, vtkPlotInterface &paraviewAdapter,
       indexType mainMesh, indexType subMesh, indexType order,
       IntegrationPoint &IntegrationPt, Types::VectorX<prec> &data,
-      indexType numberComponents, std::string name) override;
+      indexType numberComponents, std::string name);
 
   auto getVertexCoordinates(ptrCol &pointers) -> Types::Vector3<prec>;
   auto getFaceCoordinates(ptrCol &pointers, IntegrationPoint &IntegrationPt)
@@ -102,6 +97,7 @@ public:
       -> Types::Vector3<prec>;
 
 private:
-  indexType vertex;
+  indexType m_vertex;
+  indexType m_face;
 };
 } // namespace HierAMuS::FiniteElement

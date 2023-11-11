@@ -4,12 +4,8 @@
 
 #pragma once
 
-#include "equations/Nodetypes.h"
-#include "geometry/Edges.h"
-#include <forwarddeclaration.h>
 
-
-#include <finiteElements/GenericFiniteElement.h>
+#include <finiteElements/GenericFiniteElementInterface.h>
 #include <types/MatrixTypes.h>
 
 #include <Eigen/Dense>
@@ -20,17 +16,20 @@ template<class bla> class vtkSmartPointer;
 
 class vtkCell;
 
+namespace HierAMuS::Geometry {
+class EdgesData;
+}
+
 namespace HierAMuS::FiniteElement {
 
-class beamInterfaceElement2D : public FiniteElement::GenericFiniteElement {
+class beamInterfaceElement2D : public GenericFiniteElementInterface<beamInterfaceElement2D> {
   using ptrCol = PointerCollection;
 
 public:
   beamInterfaceElement2D() = default;
   ~beamInterfaceElement2D() override;
-  auto getElementType() -> Elementtypes override {
-    return Elementtypes::beamInterfaceElement2D;
-  };
+  auto getElementType() -> Elementtypes override;;
+  void set_pointers(PointerCollection &pointers) override;
 
   auto getGlobalEdgeNumber(PointerCollection& pointers, indexType localEdgeNumber) -> indexType;
 
@@ -42,7 +41,7 @@ public:
   };
   auto getVertexId(ptrCol &pointers, indexType num) -> indexType override;
   // std::vector<indexType> getVertexIds();
-  auto getVertex(ptrCol &pointers, indexType localNumber) -> Geometry::Vertex & override;
+  auto getVertex(ptrCol &pointers, indexType localNumber) -> Geometry::VertexData & override;
 
   // Structure
   auto getNumberOfVertices(PointerCollection& pointers) -> indexType override { return 1; };
@@ -207,7 +206,7 @@ public:
                  indexType meshID, indexType order) override;
   void getH1Shapes(ptrCol &pointers, indexType order, prec jacobi,
                    Types::VectorX<prec> &shape,
-                   Types::VectorX<prec> &shapeDerivative, prec xsi) override;
+                   Types::VectorX<prec> &shapeDerivative, prec xsi);
 
   auto getZCoordinate(ptrCol &pointers, const indexType &edgeNum,
                       const prec &eta) -> prec;
@@ -221,7 +220,6 @@ public:
                    const prec &eta, Types::VectorX<prec> &shape,
                    Types::VectorX<prec> &dshape);
   
-  void getVtkCell(PointerCollection &ptrCol, vtkSmartPointer<vtkCell> &cell) override;
 
   void toParaviewAdapter(ptrCol &pointers, vtkPlotInterface &catalyst,
                          const ParaviewSwitch &ToDo);
@@ -253,7 +251,9 @@ public:
 
   auto getThickness(PointerCollection &pointers) -> prec;
 
-  auto getEdge(PointerCollection &pointers, indexType localNumber) -> Geometry::Edges & override;
+  auto getEdge(PointerCollection &pointers, indexType localNumber) -> Geometry::EdgesData & override;
+
+  auto getIntegrationPoints(ptrCol &pointers) -> IntegrationPoints override;
 
 private:
   indexType interfaceElementNumber;

@@ -4,30 +4,46 @@
 
 
 #pragma once
-#include <Base/FEMBase.h>
-#include <datatypes.h>
-#include <forwarddeclaration.h>
-#include <iostream>
-#include "control/OutputHandler.h"
-#include "plot/plotControl.h"
-#include "plot/vtkplotClass.h"
-#include "shapefunctions/IntegrationsPoints/IntegrationPoints.h"
-#include "shapefunctions/IntegrationsPoints/helperClasses/IntegrationPointsManagement.h"
-#include <shapefunctions/LegendreShapes.h>
-#include <shapefunctions/LobattoShapes.h>
-#include <solver/GenericSolutionState.h>
-#include <solver/SolutionTypes.h>
+#include "datatypes.h"
 
-#include <control/ParameterList.h>
+#include "shapefunctions/IntegrationsPoints/helperClasses/IntegrationPointsManagement.h"
+#include "shapefunctions/IntegrationsPoints/IntegrationPoints.h"
+#include "solver/SolutionTypes.h"
 
 #include <memory>
-#include <spdlog/logger.h>
+#include <iostream>
 
+
+
+namespace spdlog {
+  class logger;
+}
 
 namespace HierAMuS {
 
+class EquationHandler;
+class LoadList;
 class PlotControl;
-class PointerCollection : public FEMBase {
+class ParameterList;
+class PropfunctionHandler;
+class vtkPlotInterface;
+class GenericSolutionState;
+
+namespace Geometry {
+class GeometryData;
+}
+
+namespace FiniteElement {
+class ElementList;
+}
+
+namespace Materials {
+class ElementFormulationList;
+class MaterialList;
+class MaterialFormulationList;
+}
+
+class PointerCollection {
 public:
   PointerCollection();
   virtual ~PointerCollection();
@@ -74,10 +90,10 @@ public:
   virtual std::shared_ptr<PropfunctionHandler> getPropLoads();
 
   virtual void newLoadList();
-  virtual std::shared_ptr<loadList> getLoadList();
+  virtual std::shared_ptr<LoadList> getLoadList();
 
   virtual void newPrescribedDisplacements();
-  virtual std::shared_ptr<loadList> getPrescribedDisplacements();
+  virtual std::shared_ptr<LoadList> getPrescribedDisplacements();
 
   virtual void newVtkPlot();
   virtual void setExternalVtkPlot(std::shared_ptr<vtkPlotInterface> vtkPlotExt);
@@ -101,10 +117,6 @@ public:
   virtual auto getElementFormulationList()
       -> std::shared_ptr<Materials::ElementFormulationList>;
 
-  //static IntegrationPoints getIntegrationPoints();
-  static IntegrationPoints getIntegrationPoints(indexType elementId);
-  static LobattoShapes &getLobattoShapes();
-  static LegendreShapes &getLegendreShapes();
 
   // auto getLogger() -> OutputHandler &;
 
@@ -112,20 +124,16 @@ public:
 
   auto getShallowCopy() -> std::shared_ptr<PointerCollection>;
 
-  void setRVEs()
-  {
-    this->solutionState->setHasRVE();
-    this->m_hasRVEs = true;
-  };
-  auto hasRVEs() -> bool { return this->m_hasRVEs; };
+  void setRVEs();
+  auto hasRVEs() -> bool;
 
 private:
   std::shared_ptr<Geometry::GeometryData> geometryData;
   std::shared_ptr<GenericSolutionState> solutionState;
   std::shared_ptr<EquationHandler> eqHandler;
   std::shared_ptr<FiniteElement::ElementList> elementList;
-  std::shared_ptr<loadList> loads;
-  std::shared_ptr<loadList> prescribedDisplacements;
+  std::shared_ptr<LoadList> loads;
+  std::shared_ptr<LoadList> prescribedDisplacements;
   std::shared_ptr<InfoData> Info;
   std::shared_ptr<PropfunctionHandler> props;
   std::shared_ptr<vtkPlotInterface> vtkPlot;
@@ -139,9 +147,6 @@ private:
 
   bool m_hasRVEs;
 
-  static IntegrationPointsManagement intPoints;
-  static LobattoShapes LobattoFunctions;
-  static LegendreShapes LegendreFunctions;
 
 };
 

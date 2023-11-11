@@ -4,10 +4,6 @@
 
 #pragma once
 
-#include <forwarddeclaration.h>
-
-
-
 #include <solver/SolutionTypes.h>
 
 #include <Eigen/Sparse>

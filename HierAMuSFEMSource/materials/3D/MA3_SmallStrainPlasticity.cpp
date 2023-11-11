@@ -12,6 +12,8 @@
 
 #include <control/ParameterList.h>
 
+#include "solver/HistoryDataNew/HistoryDataIterator.h"
+
 #include <string>
 
 namespace HierAMuS::Materials {

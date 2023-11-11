@@ -5,45 +5,48 @@
 
 
 #include "FaceConstraint.h"
-#include "equations/Nodetypes.h"
-#include "geometry/Base.h"
+#include "geometry/GeometryBaseData.h"
+#include "geometry/GeometryData.h"
+#include "geometry/Faces/FacesData.h"
+#include "geometry/Faces/FacesRuntime.h"
+#include "geometry/Faces/FacesH1Interface.h"
 #include "pointercollection/pointercollection.h"
+#include "solver/GenericSolutionState.h"
 #include "shapefunctions/IntegrationsPoints/IntegrationPoints.h"
 #include <vector>
+#include "geometry/Faces/FacesData.h"
+#include "GenericNodes.h"
 
 namespace HierAMuS::FiniteElement {
 FaceConstraint::~FaceConstraint() = default;
 
 auto FaceConstraint::getType() -> Elementtypes { return Elementtypes::Face; }
+void FaceConstraint::set_pointers(PointerCollection &pointers) {}
 void FaceConstraint::setVerts(std::vector<indexType> &vertsIn) {
-  this->vertex = vertsIn[0];
+  this->m_vertex = vertsIn[0];
 }
-void FaceConstraint::setFace(indexType faceIn) { Face::setFace(faceIn); }
+void FaceConstraint::setFace(indexType faceIn) { this->m_face = faceIn; }
 auto FaceConstraint::getVertexIds(PointerCollection &pointers)
     -> std::vector<indexType> {
-  auto tempFace = pointers.getGeometryData()->getFace(this->face);
-  std::vector<indexType> vertIds;
-  tempFace->getVerts(vertIds);
-  return vertIds;
+  auto tempFace = pointers.getGeometryData()->getFaceData(this->m_face);
+  return tempFace->getVertexNumbers();
 }
 auto FaceConstraint::getVertex(FaceConstraint::ptrCol &pointers,
-                               indexType localNumber) -> Geometry::Vertex & {
+                               indexType localNumber) -> Geometry::VertexData & {
   std::vector<indexType> vertIds;
   vertIds = this->getVertexIds(pointers);
 
-  return pointers.getGeometryData()->getVertex(vertIds[localNumber]);
+  return pointers.getGeometryData()->getVertexData(vertIds[localNumber]);
 }
 auto FaceConstraint::getEdge(FaceConstraint::ptrCol &pointers,
-                             indexType localNumber) -> Geometry::Edges & {
-  Geometry::Base *temp;
-  temp = pointers.getGeometryData()->getFace(this->face);
-  std::vector<indexType> EdgeNums;
-  temp->getEdges(EdgeNums);
-  return pointers.getGeometryData()->getEdge(EdgeNums[localNumber]);
+                             indexType localNumber) -> Geometry::EdgesData & {
+  auto temp = pointers.getGeometryData()->getFaceData(this->m_face);
+  auto EdgeNums = temp->getEdgeNumbers();
+  return pointers.getGeometryData()->getEdgeData(EdgeNums[localNumber]);
 }
 auto FaceConstraint::getFace(FaceConstraint::ptrCol &pointers,
-                             indexType localNumber) -> Geometry::Faces * {
-  return pointers.getGeometryData()->getFace(this->face);
+                             indexType localNumber) -> Geometry::FacesData * {
+  return pointers.getGeometryData()->getFaceData(this->m_face);
 }
 
 auto FaceConstraint::getLocalCoordinateSystem(PointerCollection &pointers)
@@ -55,8 +58,8 @@ auto FaceConstraint::getLocalCoordinateSystem(PointerCollection &pointers)
   integrationPoint.eta = prec(0);
 
   auto face = this->getFace(pointers, 0);
-  Types::Vector3<prec> Normal = face->getFaceNormal(pointers);
-  Types::Vector3<prec> Tangent = face->getTangent_G1(pointers, integrationPoint);
+  Types::Vector3<prec> Normal = face->getFaceNormal();
+  Types::Vector3<prec> Tangent = face->getTangent_G1(integrationPoint);
   Tangent.normalize();
   Types::Vector3<prec> A2 = Normal.cross(Tangent).normalized();
   Types::Vector3<prec> A3 = Tangent.cross(A2).normalized();
@@ -70,10 +73,8 @@ auto FaceConstraint::getLocalCoordinateSystem(PointerCollection &pointers)
 
 void FaceConstraint::setAllNodeBoundaryConditionMeshId(
     FaceConstraint::ptrCol &pointers, indexType meshId, indexType dof) {
-  auto temp = pointers.getGeometryData()->getFace(this->face);
-  temp->setAllNodeBoundaryConditionMeshId(pointers, meshId, dof);
-  // GenericFiniteElement::setAllNodeBoundaryConditionMeshId(pointers, meshId,
-  // dof);
+  auto temp = pointers.getGeometryData()->getFaceData(this->m_face);
+  temp->setAllNodeBoundaryConditionMeshId(meshId, dof);
 }
 
 auto FaceConstraint::getNumberOfVertices(PointerCollection &pointers)
@@ -88,87 +89,65 @@ auto FaceConstraint::getNumberOfEdges(PointerCollection &pointers)
 auto FaceConstraint::getJacobian(ptrCol &pointers,
                                  IntegrationPoint &IntegrationPt)
     -> Types::MatrixXX<prec> {
-  auto geomElement = pointers.getGeometryData()->getFace(this->face);
-  return geomElement->getJacobian(pointers, IntegrationPt);
+  auto geomElement = pointers.getGeometryData()->getFaceData(this->m_face);
+  return geomElement->getJacobian(IntegrationPt);
 }
-void FaceConstraint::getJacobian(FaceConstraint::ptrCol &pointers,
-                                 Types::Matrix22<prec> &jacobi, prec xsi,
-                                 prec eta) {
-  GenericFiniteElement::getJacobian(pointers, jacobi, xsi, eta);
-}
+
 
 void FaceConstraint::setH1Shapes(FaceConstraint::ptrCol &pointers,
                                  indexType meshid, indexType order) {
-  Geometry::Faces *tempFace;
-  tempFace = pointers.getGeometryData()->getFace(this->face);
-  tempFace->setH1Shapes(pointers, meshid, order, NodeTypes::displacement);
+  Geometry::FacesData *tempFace;
+  tempFace = pointers.getGeometryData()->getFaceData(this->m_face);
+  tempFace->setH1Shapes(meshid, order, NodeTypes::displacement);
 }
 
 void FaceConstraint::getH1Dofs(FaceConstraint::ptrCol &pointers,
                                std::vector<DegreeOfFreedom *> &Dofs,
                                indexType meshID, indexType order) {
   pointers.getGeometryData()
-      ->getFace(this->face)
-      ->getH1Dofs(pointers, Dofs, meshID, order);
+      ->getFaceData(this->m_face)
+      ->getH1Dofs(Dofs, meshID, order);
 }
 
 auto FaceConstraint::getH1Nodes(ptrCol &pointers, indexType meshID,
                                 indexType order)
     -> std::vector<GenericNodes *> {
   return pointers.getGeometryData()
-      ->getFace(this->face)
-      ->getH1Nodes(pointers, meshID, order);
+      ->getFaceData(this->m_face)
+      ->getH1Nodes(meshID, order);
 }
 
-void FaceConstraint::getH1Shapes(ptrCol &pointers, indexType order,
-                                 Types::MatrixXX<prec> &jacobi,
-                                 Types::VectorX<prec> &shape,
-                                 Types::MatrixXX<prec> &shapeDerivative,
-                                 IntegrationPoint &IntegrationPt) {
-  auto geomElement = pointers.getGeometryData()->getFace(this->face);
-  auto shapes = geomElement->getH1Shapes(pointers, order, IntegrationPt);
-  shape = shapes.shapes;
-  shapeDerivative = shapes.shapeDeriv;
-  shapeDerivative = jacobi.inverse().transpose() * shapeDerivative;
-}
-void FaceConstraint::getH1Shapes(FaceConstraint::ptrCol &pointers,
-                                 indexType order, Types::Matrix22<prec> &jacobi,
-                                 Types::VectorX<prec> &shape,
-                                 Types::Matrix2X<prec> &dshape, prec xi,
-                                 prec eta) {
-  auto geoFace = pointers.getGeometryData()->getFace(this->face);
-  geoFace->getH1Shapes(pointers, order, shape, dshape, xi, eta);
-  dshape = jacobi.inverse().transpose() * dshape;
-}
+
 
 auto FaceConstraint::getH1Shapes(ptrCol &pointers, indexType order,
                                  Types::MatrixXX<prec> &jacobi,
                                  IntegrationPoint &IntegrationPt)
     -> Geometry::H1Shapes {
-  auto geoFace = pointers.getGeometryData()->getFace(this->face);
-  auto shapes = geoFace->getH1Shapes(pointers, order, IntegrationPt);
+  auto geoFace = pointers.getGeometryData()->getFaceData(this->m_face);
+  auto shapes = geoFace->getH1Shapes(order, IntegrationPt);
   shapes.shapeDeriv = jacobi.inverse().transpose() * shapes.shapeDeriv;
   return shapes;
 }
 
 auto FaceConstraint::getIntegrationPoints(ptrCol &pointers)
     -> IntegrationPoints {
-  return Face::getIntegrationPoints(pointers);
+  auto temp = pointers.getGeometryData()->getFaceData(this->m_face);
+  return temp->getIntegrationPoints(this->m_id);
 }
 
 void FaceConstraint::geometryToParaview(PointerCollection &pointers,
                                         vtkPlotInterface &paraviewAdapter,
                                         indexType mainMesh, indexType subMesh) {
-  auto temp = pointers.getGeometryData()->getFace(this->face);
-  temp->geometryToParaview(pointers, paraviewAdapter, mainMesh, subMesh);
+  auto temp = pointers.getGeometryData()->getFaceRuntime(this->m_face);
+  temp->geometryToParaview(paraviewAdapter, mainMesh, subMesh);
 };
 
 void FaceConstraint::computeWeightsParaview(PointerCollection &pointers,
                                             vtkPlotInterface &paraviewAdapter,
                                             indexType mainMesh,
                                             indexType subMesh) {
-  auto temp = pointers.getGeometryData()->getFace(this->face);
-  temp->computeWeightsParaview(pointers, paraviewAdapter, mainMesh, subMesh);
+  auto temp = pointers.getGeometryData()->getFaceRuntime(this->m_face);
+  temp->computeWeightsParaview(paraviewAdapter, mainMesh, subMesh);
 }
 
 void FaceConstraint::H1SolutionToParaview(PointerCollection &pointers,
@@ -176,9 +155,11 @@ void FaceConstraint::H1SolutionToParaview(PointerCollection &pointers,
                                           indexType mainMesh, indexType subMesh,
                                           indexType meshId, indexType order,
                                           std::string name) {
-  auto geoElem = pointers.getGeometryData()->getFace(this->face);
-  geoElem->H1SolutionToParaview(pointers, paraviewAdapter, mainMesh, subMesh,
-                                meshId, order, name);
+  auto geoElem = pointers.getGeometryData()->getFaceRuntime(this->m_face);
+  auto Dofs = geoElem->getH1Face()->getH1Dofs(meshId, order);
+  Types::VectorX<prec> sol = pointers.getSolutionState()->getSolution(Dofs);
+  geoElem->H1SolutionToParaview(paraviewAdapter, mainMesh, subMesh,
+                                order, sol, name);
 }
 
 void FaceConstraint::projectDataToParaviewVertices(
@@ -186,38 +167,38 @@ void FaceConstraint::projectDataToParaviewVertices(
     indexType mainMesh, indexType subMesh, indexType order,
     IntegrationPoint &IntegrationPt, Types::VectorX<prec> &data,
     indexType numberComponents, std::string name) {
-  auto geoElem = pointers.getGeometryData()->getFace(this->face);
-  geoElem->projectDataToParaviewVertices(pointers, paraviewAdapter, mainMesh,
+  auto geoElem = pointers.getGeometryData()->getFaceRuntime(this->m_face);
+  geoElem->projectDataToParaviewVertices(paraviewAdapter, mainMesh,
                                          subMesh, order, IntegrationPt, data,
                                          numberComponents, name);
 }
 
 auto FaceConstraint::getVertexCoordinates(ptrCol &pointers)
     -> Types::Vector3<prec> {
-  return pointers.getGeometryData()->getVertex(this->vertex).getCoordinates();
+  return pointers.getGeometryData()->getVertexData(this->m_vertex).getCoordinates();
 }
 
 auto FaceConstraint::getFaceCoordinates(ptrCol &pointers,
                                         IntegrationPoint &IntegrationPt)
     -> Types::Vector3<prec> {
   return pointers.getGeometryData()
-      ->getFace(this->face)
-      ->getCoordinates(pointers, IntegrationPt);
+      ->getFaceData(this->m_face)
+      ->getCoordinates(IntegrationPt);
 }
 
 void FaceConstraint::setVertexNodes(PointerCollection &pointers,
                                     indexType meshId) {
-  auto &vertex = pointers.getGeometryData()->getVertex(this->vertex);
-  vertex.setNodeSet(pointers, meshId, 1, NodeTypes::displacement);
+  auto &vertex = pointers.getGeometryData()->getVertexData(this->m_vertex);
+  vertex.setNodeSet(meshId, 1, NodeTypes::displacement);
 }
 
 void FaceConstraint::getVertexDofs(PointerCollection &pointers,
                    std::vector<DegreeOfFreedom *> &Dofs, indexType meshID) {
-  auto &vertex = pointers.getGeometryData()->getVertex(this->vertex);
+  auto &vertex = pointers.getGeometryData()->getVertexData(this->m_vertex);
   std::vector<GenericNodes *> nodeVector;
-  vertex.getNodes(pointers, nodeVector, meshID);
+  vertex.getNodes(nodeVector, meshID);
   for (auto &node : nodeVector) {
-    auto addDofs = node->getDegreesOfFreedom(pointers);
+    auto addDofs = node->getDegreesOfFreedom();
     Dofs.insert(Dofs.end(), addDofs.begin(), addDofs.end());
   }
 }
@@ -225,12 +206,12 @@ void FaceConstraint::getVertexDofs(PointerCollection &pointers,
 
 auto FaceConstraint::getTangentG1(PointerCollection &pointers, IntegrationPoint &IntegrationPt)
       -> Types::Vector3<prec>{
-        return pointers.getGeometryData()->getFace(this->face)->getTangent_G1(pointers, IntegrationPt);
+        return pointers.getGeometryData()->getFaceData(this->m_face)->getTangent_G1(IntegrationPt);
       }
   auto FaceConstraint::getTangentG2(PointerCollection &pointers, IntegrationPoint &IntegrationPt)
       -> Types::Vector3<prec>{
         
-        return pointers.getGeometryData()->getFace(this->face)->getTangent_G2(pointers, IntegrationPt);
+        return pointers.getGeometryData()->getFaceData(this->m_face)->getTangent_G2(IntegrationPt);
       }
 
 } // namespace HierAMuS::FiniteElement

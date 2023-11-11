@@ -2,8 +2,7 @@
 //
 // SPDX-License-Identifier: BSD-3-Clause
 
-#include "datatypes.h"
-#include "forwarddeclaration.h"
+
 #include <memory>
 #include <types/MatrixTypes.h>
 
@@ -28,12 +27,11 @@
 #include "solver/Homogenization/HomogenizationShell.h"
 #include "solver/Homogenization/Homogenization3DThermoMechBeam.h"
 
-#include <equations/DegreeOfFreedom.h>
-#include <equations/DofStatus.h>
-#include <equations/EquationHandler.h>
+//Equations
+#include "EquationHandler.h"
 
-#include <loads/LoadList.h>
-#include <loads/PropfunctionHandler.h>
+#include "LoadList.h"
+#include "PropfunctionHandler.h"
 
 #include <solver/GenericSolver.h>
 
@@ -194,7 +192,7 @@ void StaticSolutionStateHomogenization::setStrains(
     this->currStrains = strains;
   }
 
-  auto Logger = pointers.getSPDLogger();
+  auto &Logger = pointers.getSPDLogger();
 
   Logger.debug("  Updated strains to:     {}",this->currStrains.transpose());
 
@@ -276,7 +274,7 @@ void StaticSolutionStateHomogenization::homogenize(
   prec threshold =
       tred.cwiseAbs().maxCoeff() * std::numeric_limits<prec>::epsilon() * 100;
 
-  auto Logger = pointers.getSPDLogger();
+  auto &Logger = pointers.getSPDLogger();
   Logger.debug("Material tangent:\n{}",tred.unaryExpr([threshold](prec d) {
                                     return abs(d) < threshold ? prec(0) : d;
                                   }));

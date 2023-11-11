@@ -7,25 +7,25 @@
 
 namespace py = pybind11;
 
+#include "BaseWrapper.h"
 #include "EdgesWrapper.h"
-#include "LinearEdgeWrapper.h"
+#include "FacesWrapper.h"
 #include "GeometryDataWrapper.h"
 #include "GeometryTypesWrapper.h"
-#include "VertexWrapper.h"
-#include "BaseWrapper.h"
-#include "FacesWrapper.h"
-#include "VolumesWrapper.h"
-#include "SpecialWrapper.h"
+#include "LinearEdgeWrapper.h"
 #include "ScaledBoundary2DWrapper.h"
-
-
+#include "SpecialWrapper.h"
+#include "VertexWrapper.h"
+#include "VolumesWrapper.h"
 
 namespace HierAMuS {
 class geometryAddClass {
 public:
   geometryAddClass(py::module &m)
-      : base(m), geoFaces(m), geoVolumes(m), geoSpecial(m), geoData(m), geoTypes(m), geoEdges(m), geoLinEdge(m), vert(m), geoScaledBoundary2D(m)
-      {};
+      : base(m), geoEdges(m), geoFaces(m), geoVolumes(m), geoSpecial(m),
+        vert(m), geoData(m),
+        geoTypes(m), geoLinEdge(m),
+        geoScaledBoundary2D(m){};
   void registerFunctions();
 
 private:

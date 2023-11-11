@@ -2,7 +2,9 @@
 //
 // SPDX-License-Identifier: BSD-3-Clause
 
-#include "forwarddeclaration.h"
+
+#include "control/ParameterList.h"
+
 #include <types/MatrixTypes.h>
 
 #include <control/HandlingStructs.h>
@@ -16,15 +18,15 @@
 #include <pointercollection/pointercollection.h>
 
 #include <finiteElements/ElementList.h>
+#include "finiteElements/GenericFiniteElement.h"
 
 #include <fstream>
 
-#include <equations/DegreeOfFreedom.h>
-#include <equations/DofStatus.h>
-#include <equations/EquationHandler.h>
+//Equations
+#include "EquationHandler.h"
 
-#include <loads/LoadList.h>
-#include <loads/PropfunctionHandler.h>
+#include "LoadList.h"
+#include "PropfunctionHandler.h"
 
 #include <solver/GenericSolver.h>
 
@@ -129,9 +131,11 @@ void StaticSolutionState::setSparseMatrix(PointerCollection &pointers) {
       entriesPerColLowerLeft;
   auto elemList = pointers.getElementList();
   auto numElem = elemList->getNumberOfElements();
-  pointers.getEquationHandler()->updateEquations();
-  pointers.getEquationHandler()->initSolutionState(pointers);
-
+  auto equ = pointers.getEquationHandler();
+  equ->updateEquations();
+  this->setInitialValues(equ->getNumberOfTotalEquations(),
+                         equ->getNumberOfActiveEquations());
+ 
   m_constraints.initialize(pointers);
 
   entriesPerColActive.resize(this->NumberOfActiveEquations);
@@ -144,7 +148,7 @@ void StaticSolutionState::setSparseMatrix(PointerCollection &pointers) {
   entriesPerColinActive.setZero();
 
   for (auto i = 0; i < numElem; ++i) {
-    auto elem = elemList->getElement(i);
+    auto elem = elemList->getElement(pointers, i);
     auto Dofs = elem->getDofs(pointers);
     indexType activeCols = 0;
     indexType inactiveCols = 0;
@@ -172,7 +176,7 @@ void StaticSolutionState::setSparseMatrix(PointerCollection &pointers) {
   this->Kbb.reserve(entriesPerColinActive);
 
   for (auto i = 0; i < numElem; ++i) {
-    auto Dofs = elemList->getElement(i)->getDofs(pointers);
+    auto Dofs = elemList->getElement(pointers, i)->getDofs(pointers);
     for (auto j : Dofs) {
       if (j->getStatus() == dofStatus::active) { //(Kaa) j & k are active
         for (auto k : Dofs) {
@@ -249,13 +253,13 @@ void StaticSolutionState::insertStiffnessResidualSymUpper(
     Eigen::Matrix<prec, Eigen::Dynamic, Eigen::Dynamic> &stiffness,
     Eigen::Matrix<prec, Eigen::Dynamic, 1> &residual,
     std::vector<DegreeOfFreedom *> &Dofs) {
-  indexType vsize = static_cast<indexType>(Dofs.size());
+  auto vsize = Dofs.size();
 
-  for (indexType i = 0; i < vsize; ++i) {
-    indexType eqI = Dofs[i]->getEqId();
+  for (auto i = 0; i < vsize; ++i) {
+    auto eqI = static_cast<Eigen::Index>(Dofs[i]->getEqId());
     if (Dofs[i]->getStatus() == dofStatus::active) {
-      for (indexType j = 0; j < vsize; ++j) {
-        indexType eqJ = Dofs[j]->getEqId();
+      for (auto j = 0; j < vsize; ++j) {
+        auto eqJ = static_cast<Eigen::Index>(Dofs[j]->getEqId());
         if (Dofs[j]->getStatus() == dofStatus::active) {
           if (eqI <= eqJ) {
 #pragma omp atomic
@@ -273,8 +277,8 @@ void StaticSolutionState::insertStiffnessResidualSymUpper(
       this->Rhs(eqI) -= residual(i);
     } // end active i
     else {
-      for (indexType j = 0; j < vsize; ++j) {
-        indexType eqJ = Dofs[j]->getEqId();
+      for (auto j = 0; j < vsize; ++j) {
+        auto eqJ = static_cast<Eigen::Index>(Dofs[j]->getEqId());
         if (Dofs[j]->getStatus() == dofStatus::active) {
 #pragma omp atomic
           Kba.coeffRef(eqI, eqJ) += stiffness(i, j);
@@ -355,8 +359,6 @@ void StaticSolutionState::insertStiffnessResidualFull(
         {
 #pragma omp atomic
           this->Kab.coeffRef(eqI, eqJ) += stiffness(i, j);
-//#pragma omp atomic
-//          this->Rhs(eqI) -= stiffness(i,j)*this->incSol(Dofs[j]->getEqId());
         }
       }   // end j loop
 #pragma omp atomic
@@ -437,7 +439,7 @@ void StaticSolutionState::computeLoads(PointerCollection &pointers) {
 
   auto eqHandler = pointers.getEquationHandler();
 
-  pointers.getLoadList()->computeLoads(pointers, ids, load, loadinc);
+  pointers.getLoadList()->computeLoads(*this->getProps(), ids, load, loadinc);
   for (auto i = 0; i < ids.size(); ++i) {
     auto &dof = eqHandler->getDegreeOfFreedom(ids[i]);
     if (dof.getStatus() == dofStatus::active) {
@@ -449,7 +451,7 @@ void StaticSolutionState::computeLoads(PointerCollection &pointers) {
   load.clear();
   loadinc.clear();
   ids.clear();
-  pointers.getPrescribedDisplacements()->computeLoads(pointers, ids, load,
+  pointers.getPrescribedDisplacements()->computeLoads(*this->getProps(), ids, load,
                                                       loadinc);
   for (auto i = 0; i < ids.size(); ++i) {
     auto &dof = eqHandler->getDegreeOfFreedom(ids[i]);
@@ -484,7 +486,7 @@ void StaticSolutionState::assembleSystem(PointerCollection &pointers) {
     schedule(dynamic)
   for (indexType i = 0; i < numberOfElements; ++i) {
     Dofs.clear();
-    elem = elemList->getElement(i);
+    elem = elemList->getElement(pointers, i);
     elem->GenericSetTangentResidual(pointers, stiffness, residual, Dofs);
     this->insertStiffnessResidual(stiffness, residual, Dofs);
   }
@@ -838,11 +840,10 @@ auto StaticSolutionState::getSolution(indexType globalId) -> prec {
 
 auto StaticSolutionState::getSolution(std::vector<DegreeOfFreedom *> &Dofs)
     -> Eigen::Matrix<prec, Eigen::Dynamic, 1> {
-  Eigen::Matrix<prec, Eigen::Dynamic, 1> RetVec;
 
   auto Size = static_cast<indexType>(Dofs.size());
+  Eigen::Matrix<prec, Eigen::Dynamic, 1> RetVec(Size);
   if (Size > 0) {
-    RetVec.resize(Size);
     for (auto i = 0; i < Size; ++i) {
       RetVec(i) = this->Solution(Dofs[i]->getId());
     }
@@ -854,10 +855,9 @@ auto StaticSolutionState::getSolution(std::vector<DegreeOfFreedom *> &Dofs)
 auto StaticSolutionState::getIncrementalSolution(
     std::vector<DegreeOfFreedom *> &Dofs)
     -> Eigen::Matrix<prec, Eigen::Dynamic, 1> {
-  Types::VectorX<prec> RetVec;
   auto Size = static_cast<indexType>(Dofs.size());
+  Types::VectorX<prec> RetVec(Size);
   if (Size > 0) {
-    RetVec.resize(Size);
     for (auto i = 0; i < Size; ++i) {
       RetVec(i) = this->IncSolution(Dofs[i]->getId());
     }
@@ -868,10 +868,9 @@ auto StaticSolutionState::getIncrementalSolution(
 auto StaticSolutionState::getNewtonSolution(
     std::vector<DegreeOfFreedom *> &Dofs)
     -> Eigen::Matrix<prec, Eigen::Dynamic, 1> {
-  Types::VectorX<prec> RetVec;
   auto Size = static_cast<indexType>(Dofs.size());
+  Types::VectorX<prec> RetVec(Size);
   if (Size > 0) {
-    RetVec.resize(Size);
     for (auto i = 0; i < Size; ++i) {
       RetVec(i) = this->NewtonSolution(Dofs[i]->getId());
     }
@@ -986,10 +985,8 @@ void StaticSolutionState::computeConditionNumber(PointerCollection &pointers) {
 
   auto &Logger = pointers.getSPDLogger();
 
-  Eigen::Matrix<prec, Eigen::Dynamic, 1> rr;
   auto numEq = this->Kaa.cols();
-  rr.resize(numEq);
-  rr = Eigen::Matrix<prec, Eigen::Dynamic, 1>::Random(numEq, 1);
+  Types::VectorX<prec> rr = Types::VectorX<prec>::Random(numEq);
   auto rrNorm = sqrt(rr.dot(rr));
   for (auto i = 0; i < 40; ++i) {
     rr /= rrNorm;

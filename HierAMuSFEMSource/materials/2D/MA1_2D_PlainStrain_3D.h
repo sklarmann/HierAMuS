@@ -6,10 +6,9 @@
 
 #pragma once
 
-#include <forwarddeclaration.h>
 
-#include <materials/GenericMaterialFormulation.h>
-#include <types/MatrixTypes.h>
+#include "materials/GenericMaterialFormulation.h"
+#include "types/MatrixTypes.h"
 
 namespace HierAMuS::Materials {
   class MA2_2D_PlainStrain_3D : public GenericMaterialFormulation {

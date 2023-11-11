@@ -8,11 +8,11 @@
 
 namespace py = pybind11;
 
-#include "geometry/Base.h"
+#include "geometry/GeometryBaseData.h"
 
-class PyVertex : public HierAMuS::Geometry::Base {
+class PyVertex : public HierAMuS::Geometry::GeometryBaseData {
 public:
-  using HierAMuS::Geometry::Base::Base;
+  using HierAMuS::Geometry::GeometryBaseData::GeometryBaseData;
 
   //void renew() {
   //  PYBIND11_OVERRIDE(void, HierAMuS::PointerCollection, renew);
@@ -21,7 +21,7 @@ public:
 
 void BaseToPybind(py::module &m)
 {
-  py::class_<HierAMuS::Geometry::Base,
-             std::shared_ptr<HierAMuS::Geometry::Base>>(m, "Base")
+  py::class_<HierAMuS::Geometry::GeometryBaseData,
+             std::shared_ptr<HierAMuS::Geometry::GeometryBaseData>>(m, "GeometryBaseData")
 	;
 }

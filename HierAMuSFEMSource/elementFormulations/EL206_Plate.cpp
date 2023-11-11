@@ -4,8 +4,6 @@
 
 
 
-#include "forwarddeclaration.h"
-#include "geometry/Edges.h"
 #include "plot/vtkplotClassBase.h"
 #include "shapefunctions/IntegrationsPoints/IntegrationPoints.h"
 
@@ -14,17 +12,14 @@
 
 #include <control/HandlingStructs.h>
 #include <control/OutputHandler.h>
+#include "control/ParameterList.h"
 #include <pointercollection/pointercollection.h>
 
-#include <equations/DegreeOfFreedom.h>
-#include <equations/GenericNodes.h>
-#include <equations/NodeSet.h>
-
-#include <finiteElements/GenericFiniteElement.h>
+#include <finiteElements/Face.h>
 
 #include <materials/GenericMaterialFormulation.h>
 
-#include <geometry/Vertex.h>
+#include <geometry/VertexData.h>
 
 #include <elementFormulations/GenericElementFormulation.h>
 #include <solver/GenericSolutionState.h>
@@ -39,7 +34,7 @@
 namespace HierAMuS::Elementformulations {
 
 EL206_Plate::EL206_Plate(PointerCollection *ptrCol)
-    : GenericElementFormulation(ptrCol) {}
+    : GenericElementFormulationInterface(ptrCol) {}
 
 EL206_Plate::~EL206_Plate() = default;
 
@@ -54,7 +49,7 @@ void EL206_Plate::readData(PointerCollection &pointers, ParameterList &list) {
   this->GA = list.getPrecVal("GA");
   this->GI = list.getPrecVal("GI");
 
-  auto Log = pointers.getSPDLogger();
+  auto &Log = pointers.getSPDLogger();
 
   Log.info("\n{:-<100}\n"
                 "*   Element 206, specified Options\n"
@@ -70,33 +65,33 @@ void EL206_Plate::readData(PointerCollection &pointers, ParameterList &list) {
 }
 
 void EL206_Plate::setDegreesOfFreedom(
-  PointerCollection& pointers, FiniteElement::GenericFiniteElement *elem) {
+  PointerCollection& pointers, FiniteElement::Face &elem) {
 
   switch (this->mode) {
   case 1: {
-    elem->setH1Shapes(pointers, this->meshIdDisp, this->dispOrder);
-    elem->setH1Shapes(pointers, this->meshIdRot, this->rotOrder);
+    elem.setH1Shapes(pointers, this->meshIdDisp, this->dispOrder);
+    elem.setH1Shapes(pointers, this->meshIdRot, this->rotOrder);
   } break;
   case 2: {
-    elem->setSpecialPlateShapes(pointers, this->meshIdRot, this->rotOrder);
+    elem.setSpecialPlateShapes(pointers, this->meshIdRot, this->rotOrder);
   } break;
   }
 }
 
 void EL206_Plate::AdditionalOperations(
-  PointerCollection& pointers, FiniteElement::GenericFiniteElement *elem) {
+  PointerCollection& pointers, FiniteElement::Face &elem) {
 
   switch (this->mode) {
   case 1: {
-    elem->setAllNodeBoundaryConditionMeshId(pointers, this->meshIdDisp, 0);
-    elem->setAllNodeBoundaryConditionMeshId(pointers, this->meshIdDisp, 1);
-    elem->setAllNodeBoundaryConditionMeshId(pointers, this->meshIdRot, 2);
+    elem.setAllNodeBoundaryConditionMeshId(pointers, this->meshIdDisp, 0);
+    elem.setAllNodeBoundaryConditionMeshId(pointers, this->meshIdDisp, 1);
+    elem.setAllNodeBoundaryConditionMeshId(pointers, this->meshIdRot, 2);
   }
   case 2: {
-    elem->setAllNodeBoundaryConditionMeshId(pointers, this->meshIdDisp, 0);
-    elem->setAllNodeBoundaryConditionMeshId(pointers, this->meshIdDisp, 1);
-    elem->setAllNodeBoundaryConditionMeshId(pointers, this->meshIdRot, 1);
-    elem->setAllNodeBoundaryConditionMeshId(pointers, this->meshIdRot, 2);
+    elem.setAllNodeBoundaryConditionMeshId(pointers, this->meshIdDisp, 0);
+    elem.setAllNodeBoundaryConditionMeshId(pointers, this->meshIdDisp, 1);
+    elem.setAllNodeBoundaryConditionMeshId(pointers, this->meshIdRot, 1);
+    elem.setAllNodeBoundaryConditionMeshId(pointers, this->meshIdRot, 2);
   }
   }
 }
@@ -116,17 +111,17 @@ auto EL206_Plate::getDofs(PointerCollection& pointers, FiniteElement::GenericFin
 }
 
 void EL206_Plate::setTangentResidual(PointerCollection& pointers,
-                                     FiniteElement::GenericFiniteElement *elem,
+                                     FiniteElement::Face &elem,
                                      Types::MatrixXX<prec> &stiffness,
                                      Types::VectorX<prec> &residual, std::vector<DegreeOfFreedom *> &Dofs) {
 
   switch (this->mode) {
   case 1: // Displacement based formulation
-    this->setTangentResidualDispFormulation(pointers, elem, stiffness, residual,
+    this->setTangentResidualDispFormulation(pointers, &elem, stiffness, residual,
                                             Dofs);
     break;
   case 2: // Hu-Washizu formulation
-    this->setTangentResidualHuWashizuFormulation(pointers, elem, stiffness,
+    this->setTangentResidualHuWashizuFormulation(pointers, &elem, stiffness,
                                                    residual, Dofs);
     break;
   default:
@@ -146,7 +141,7 @@ auto EL206_Plate::getNumberOfIntergrationPoints(
 }
 
 void EL206_Plate::toParaviewAdaper(PointerCollection &pointers,
-                                   FiniteElement::GenericFiniteElement *elem,
+                                   FiniteElement::Face &elem,
                                    vtkPlotInterface &paraviewAdapter,
                                    ParaviewSwitch control) {
 
@@ -182,7 +177,7 @@ void EL206_Plate::toParaviewQuadrilateral(
 
 void EL206_Plate::setTangentResidualDispFormulation(
   PointerCollection& pointers,
-  FiniteElement::GenericFiniteElement *elem,
+  FiniteElement::Face *elem,
   Eigen::Matrix<prec, Eigen::Dynamic, Eigen::Dynamic> &stiffness,
   Eigen::Matrix<prec, Eigen::Dynamic, 1> &residual, std::vector<DegreeOfFreedom *> &Dofs) {
 
@@ -236,7 +231,7 @@ Types::Matrix3X<prec> EL206_Plate::getBMatrix(Geometry::H1Shapes &shapesDisp,
 
 void EL206_Plate::setTangentResidualHuWashizuFormulation(
   PointerCollection& pointers,
-  FiniteElement::GenericFiniteElement *elem,
+  FiniteElement::Face *elem,
   Eigen::Matrix<prec, Eigen::Dynamic, Eigen::Dynamic> &stiffness,
   Eigen::Matrix<prec, Eigen::Dynamic, 1> &residual, std::vector<DegreeOfFreedom *> &Dofs) {}
 

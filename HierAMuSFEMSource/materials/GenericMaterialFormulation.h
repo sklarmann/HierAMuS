@@ -5,17 +5,17 @@
 
 
 #pragma once
-#include <datatypes.h>
+#include "datatypes.h"
 
-#include <forwarddeclaration.h>
-#include <types/MatrixTypes.h>
-#include <control/ParameterList.h>
+#include "types/MatrixTypes.h"
 
 #include "solver/HistoryDataNew/HistoryDataStructure.h"
-#include "solver/HistoryDataNew/HistoryDataIterator.h"
 
 namespace HierAMuS {
-class IntegrationPoint;
+struct IntegrationPoint;
+class PointerCollection;
+class HistoryDataIterator;
+class ParameterList;
 namespace Materials {
 
 

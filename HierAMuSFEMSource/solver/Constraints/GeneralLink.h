@@ -6,7 +6,7 @@
 #include "BaseConstraint.h"
 #include "MatrixTypes.h"
 #include "datatypes.h"
-#include "forwarddeclaration.h"
+
 #include "pointercollection/pointercollection.h"
 #include <vector>
 

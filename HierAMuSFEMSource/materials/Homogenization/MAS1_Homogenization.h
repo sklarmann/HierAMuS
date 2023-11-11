@@ -6,10 +6,8 @@
 
 #pragma once
 
-#include <forwarddeclaration.h>
-
-#include <materials/GenericMaterialFormulation.h>
-#include <types/MatrixTypes.h>
+#include "materials/GenericMaterialFormulation.h"
+#include "types/MatrixTypes.h"
 
 #include <memory>
 #ifdef OPENMP
@@ -18,24 +16,28 @@
 
 
 
-namespace HierAMuS::Materials {
+namespace HierAMuS {
+class PointerCollection;
+namespace Materials {
 
 class MAS1_Homogenization : public GenericMaterialFormulation {
 public:
   explicit MAS1_Homogenization(PointerCollection *ptrCol);
   ~MAS1_Homogenization() override;
 
-  void readData(PointerCollection& pointers, ParameterList &list) override;
-  void getMaterialData(PointerCollection& pointers, MaterialTransferData &material_in_out, IntegrationPoint& ip) override;
+  void readData(PointerCollection &pointers, ParameterList &list) override;
+  void getMaterialData(PointerCollection &pointers,
+                       MaterialTransferData &material_in_out,
+                       IntegrationPoint &ip) override;
 
   void initRVE(PointerCollection &pointers, IntegrationPoint &ip) override;
   void setRVE(PointerCollection &pointers, PointerCollection &RVE) override;
-  void updateRVEHistory(PointerCollection &pointers, IntegrationPoint& ip) override;
+  void updateRVEHistory(PointerCollection &pointers,
+                        IntegrationPoint &ip) override;
 
 private:
   auto getFileName(std::shared_ptr<PointerCollection> pointers,
-                   IntegrationPoint &ip)
-      -> std::string;
+                   IntegrationPoint &ip) -> std::string;
 
   PointerCollection *m_RVE;
   indexType m_maxIterations;
@@ -46,4 +48,5 @@ private:
 #endif
 };
 
+} // namespace Materials
 } // namespace HierAMuS

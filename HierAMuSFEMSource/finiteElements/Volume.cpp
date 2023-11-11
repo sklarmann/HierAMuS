@@ -2,195 +2,145 @@
 //
 // SPDX-License-Identifier: BSD-3-Clause
 
-
-
 #include "Volume.h"
 #include "MatrixTypes.h"
-#include "geometry/Base.h"
+#include "geometry/GeometryBaseData.h"
+#include "geometry/GeometryData.h"
+#include "geometry/Volumes/VolumesH1Interface.h"
+#include "geometry/Volumes/VolumesRuntime.h"
+#include "solver/GenericSolutionState.h"
 #include <vector>
 
 namespace HierAMuS::FiniteElement {
 Volume::~Volume() = default;
 
 auto Volume::getType() -> Elementtypes { return Elementtypes::Volume; }
-void Volume::setVolume(indexType volumeIn) { this->volume = volumeIn; }
-auto Volume::getVertexIds(PointerCollection& pointers) -> std::vector<indexType> {
-  auto tempVol =
-      pointers.getGeometryData()->getVolume(this->volume);
-  std::vector<indexType> vertIds;
-  tempVol->getVerts(vertIds);
-  return vertIds;
+void Volume::set_pointers(PointerCollection &pointers) {
+  m_volume_object = pointers.getGeometryData()->getVolumeData(m_volume);
+  m_volume_runtime =
+      pointers.getGeometryData()->getVolumeRuntime(m_volume);
+}
+void Volume::setVolume(indexType volumeIn) { this->m_volume = volumeIn; }
+auto Volume::getVertexIds(PointerCollection &pointers)
+    -> std::vector<indexType> {
+  return m_volume_object->getVertexNumbers();
 }
 
 auto Volume::getVertex(Volume::ptrCol &pointers, indexType localNumber)
-    -> Geometry::Vertex & {
+    -> Geometry::VertexData & {
   std::vector<indexType> vertIds;
   vertIds = this->getVertexIds(pointers);
 
-  return pointers.getGeometryData()->getVertex(vertIds[localNumber]);
+  return pointers.getGeometryData()->getVertexData(vertIds[localNumber]);
 }
 
 auto Volume::getEdge(Volume::ptrCol &pointers, indexType localNumber)
-    -> Geometry::Edges & {
-  auto temp = pointers.getGeometryData()->getVolume(this->volume);
-  std::vector<indexType> EdgeNums;
-  temp->getEdges(EdgeNums);
-  return pointers.getGeometryData()->getEdge(EdgeNums[localNumber]);
+    -> Geometry::EdgesData & {
+  return *m_volume_object->getEdge(localNumber);
 }
 
 auto Volume::getFace(Volume::ptrCol &pointers, indexType localNumber)
-    -> Geometry::Faces * {
-  auto temp = pointers.getGeometryData()->getVolume(this->volume);
+    -> Geometry::FacesData * {
   std::vector<indexType> FaceNums;
-  temp->getFaces(FaceNums);
-  return pointers.getGeometryData()->getFace(FaceNums[localNumber]);
+  m_volume_object->getFaceNumbers(FaceNums);
+  return pointers.getGeometryData()->getFaceData(FaceNums[localNumber]);
 }
 
-
-auto Volume::getVolume(ptrCol &pointers, indexType localNumber) -> Geometry::Volumes *
-{
-  return pointers.getGeometryData()->getVolume(this->volume);
+auto Volume::getVolume(ptrCol &pointers, indexType localNumber)
+    -> Geometry::VolumesData * {
+  return m_volume_object;
 }
-
-
 
 void Volume::setAllNodeBoundaryConditionMeshId(Volume::ptrCol &pointers,
-                                             indexType meshId, indexType dof) {
-  auto temp = pointers.getGeometryData()->getVolume(this->volume);
-  temp->setAllNodeBoundaryConditionMeshId(pointers, meshId, dof);
+                                               indexType meshId,
+                                               indexType dof) {
+  m_volume_object->setAllNodeBoundaryConditionMeshId(meshId, dof);
 }
 
-auto Volume::getNumberOfVertices(PointerCollection& pointers) -> indexType {
-  auto temp = pointers.getGeometryData()->getVolume(this->volume);
-  return temp->getNumberOfVerts();
+auto Volume::getNumberOfVertices(PointerCollection &pointers) -> indexType {
+  return m_volume_runtime->getNumberOfVerts();
 }
 
-auto Volume::getNumberOfEdges(PointerCollection& pointers) -> indexType {
-  auto temp = pointers.getGeometryData()->getVolume(this->volume);
-  return temp->getNumberOfEdges();
+auto Volume::getNumberOfEdges(PointerCollection &pointers) -> indexType {
+  return m_volume_runtime->getNumberOfEdges();
 }
 
-auto Volume::getNumberOfFaces(PointerCollection& pointers) -> indexType {
-  auto temp = pointers.getGeometryData()->getVolume(this->volume);
-  return temp->getNumberOfFaces();
+auto Volume::getNumberOfFaces(PointerCollection &pointers) -> indexType {
+  return m_volume_runtime->getNumberOfFaces();
 }
 
 auto Volume::getJacobian(ptrCol &pointers, IntegrationPoint &IntegrationPt)
-    -> Types::MatrixXX<prec> {
-  auto geomElement = pointers.getGeometryData()->getVolume(this->volume);
-  return geomElement->getJacobian(pointers, IntegrationPt);
-}
-
-void Volume::getJacobian(Volume::ptrCol &pointers, Types::Matrix33<prec> &jacobi,
-                       prec xsi, prec eta, prec zeta) {
-  auto geomElement = pointers.getGeometryData()->getVolume(this->volume);
-  geomElement->getJacobian(pointers, jacobi, xsi, eta, zeta);
-
+    -> Types::Matrix33<prec> {
+  return m_volume_runtime->getJacobian(IntegrationPt);
 }
 
 void Volume::setH1Shapes(Volume::ptrCol &pointers, indexType meshid,
-                       indexType order) {
+                         indexType order) {
 
-  auto tempFace = pointers.getGeometryData()->getVolume(this->volume);
-  tempFace->setH1Shapes(pointers, meshid, order, NodeTypes::displacement);
+  m_volume_object->setH1Shapes(meshid, order, NodeTypes::displacement);
 }
 
 void Volume::getH1Dofs(Volume::ptrCol &pointers,
-                     std::vector<DegreeOfFreedom *> &Dofs, indexType meshID,
-                     indexType order) {
-  pointers.getGeometryData()
-      ->getVolume(this->volume)
-      ->getH1Dofs(pointers, Dofs, meshID, order);
+                       std::vector<DegreeOfFreedom *> &Dofs, indexType meshID,
+                       indexType order) {
+  m_volume_runtime->getH1Volume()->getH1Dofs(Dofs, meshID, order);
 }
 
 auto Volume::getH1Nodes(ptrCol &pointers, indexType meshID, indexType order)
     -> std::vector<GenericNodes *> {
-  return pointers.getGeometryData()
-      ->getVolume(this->volume)
-      ->getH1Nodes(pointers, meshID, order);
-}
-
-void Volume::getH1Shapes(ptrCol &pointers, indexType order,
-                       Types::MatrixXX<prec> &jacobi,
-                       Types::VectorX<prec> &shape,
-                       Types::MatrixXX<prec> &shapeDerivative,
-                       IntegrationPoint &IntegrationPt) {
-  auto geomElement = pointers.getGeometryData()->getVolume(this->volume);
-  auto shapes = geomElement->getH1Shapes(pointers, order, IntegrationPt);
-  shape = shapes.shapes;
-  shapeDerivative = shapes.shapeDeriv;
-  shapeDerivative = jacobi.inverse().transpose() * shapeDerivative;
-}
-
-void Volume::getH1Shapes(Volume::ptrCol &pointers, indexType order,
-                       Types::Matrix33<prec> &jacobi,
-                       Types::VectorX<prec> &shape,
-                       Types::Matrix3X<prec> &dshape, prec xi, prec eta,prec zeta) {
-  auto geomElement = pointers.getGeometryData()->getVolume(this->volume);
-  geomElement->getH1Shapes(pointers, order, shape, dshape, xi, eta, zeta);
-  dshape = jacobi.inverse().transpose() * dshape;
+  return m_volume_runtime->getH1Volume()->getH1Nodes(meshID, order);
 }
 
 auto Volume::getH1Shapes(ptrCol &pointers, indexType order,
-                       Types::MatrixXX<prec> &jacobi,
-                       IntegrationPoint &IntegrationPt) -> Geometry::H1Shapes {
-  auto geoVol = pointers.getGeometryData()->getVolume(this->volume);
-  auto shapes = geoVol->getH1Shapes(pointers, order, IntegrationPt);
-  Types::Matrix33<prec> jacobiInv = jacobi;
-  jacobiInv = jacobiInv.inverse().transpose();
+                         Types::Matrix33<prec> &jacobi,
+                         IntegrationPoint &IntegrationPt)
+    -> Geometry::H1Shapes {
+  auto shapes =
+      m_volume_runtime->getH1Volume()->getH1Shapes(order, IntegrationPt);
+  Types::Matrix33<prec> jacobiInv = jacobi.inverse().transpose();
 
   shapes.shapeDeriv = jacobiInv * shapes.shapeDeriv;
   return shapes;
 }
 
 auto Volume::getIntegrationPoints(ptrCol &pointers) -> IntegrationPoints {
-  auto temp = pointers.getGeometryData()->getVolume(this->volume);
-  return temp->getIntegrationPoints(pointers,this->id);
+  return m_volume_runtime->getIntegrationPoints(this->m_id);
 }
 
 void Volume::setHDivShapes(Volume::ptrCol &pointers, indexType meshid,
-                         indexType order, NodeTypes type) {
+                           indexType order, NodeTypes type) {
   GenericFiniteElement::setHDivShapes(pointers, meshid, order, type);
 }
 void Volume::getHDivDofs(Volume::ptrCol &pointers,
-                       std::vector<DegreeOfFreedom *> &Dofs,
-                       indexType meshID, indexType order) {
+                         std::vector<DegreeOfFreedom *> &Dofs, indexType meshID,
+                         indexType order) {
   GenericFiniteElement::getHDivDofs(pointers, Dofs, meshID, order);
 }
-void Volume::getHDivShapes(Volume::ptrCol &pointers, indexType order,
-                           Types::Matrix22<prec> &jacobi,
-                           Types::Matrix2X<prec> &shape,
-                           Types::VectorX<prec> &dshape, prec xi,
-                           prec eta) {
-  GenericFiniteElement::getHDivShapes(pointers, order, jacobi, shape, dshape,
-                                      xi, eta);
-}
-void Volume::toParaviewAdapter(PointerCollection &ptrCol,
-                             vtkPlotInterface &catalyst,
-                             const ParaviewSwitch &ToDo) {}
 
 void Volume::geometryToParaview(PointerCollection &pointers,
-                              vtkPlotInterface &paraviewAdapter,
-                              indexType mainMesh, indexType subMesh) {
-  auto temp = pointers.getGeometryData()->getVolume(this->volume);
-  temp->geometryToParaview(pointers, paraviewAdapter, mainMesh, subMesh);
+                                vtkPlotInterface &paraviewAdapter,
+                                indexType mainMesh, indexType subMesh) {
+  m_volume_runtime->geometryToParaview(paraviewAdapter, mainMesh,
+                                       subMesh);
 };
 
 void Volume::computeWeightsParaview(PointerCollection &pointers,
-                                  vtkPlotInterface &paraviewAdapter,
-                                  indexType mainMesh, indexType subMesh) {
-  auto temp = pointers.getGeometryData()->getVolume(this->volume);
-  temp->computeWeightsParaview(pointers, paraviewAdapter, mainMesh, subMesh);
+                                    vtkPlotInterface &paraviewAdapter,
+                                    indexType mainMesh, indexType subMesh) {
+  m_volume_runtime->computeWeightsParaview(paraviewAdapter, mainMesh,
+                                           subMesh);
 }
 
 void Volume::H1SolutionToParaview(PointerCollection &pointers,
-                                vtkPlotInterface &paraviewAdapter,
-                                indexType mainMesh, indexType subMesh,
-                                indexType meshId, indexType order,
-                                std::string name) {
-  auto geoElem = pointers.getGeometryData()->getVolume(this->volume);
-  geoElem->H1SolutionToParaview(pointers, paraviewAdapter, mainMesh, subMesh,
-                                meshId, order, name);
+                                  vtkPlotInterface &paraviewAdapter,
+                                  indexType mainMesh, indexType subMesh,
+                                  indexType meshId, indexType order,
+                                  std::string name) {
+  std::vector<DegreeOfFreedom *> Dofs;
+  m_volume_runtime->getH1Volume()->getH1Dofs(Dofs, meshId, order);
+  Types::VectorX<prec> sol = pointers.getSolutionState()->getSolution(Dofs);
+  m_volume_runtime->H1SolutionToParaview(paraviewAdapter, mainMesh,
+                                         subMesh, order, sol, name);
 }
 
 void Volume::projectDataToParaviewVertices(
@@ -198,10 +148,9 @@ void Volume::projectDataToParaviewVertices(
     indexType mainMesh, indexType subMesh, indexType order,
     IntegrationPoint &IntegrationPt, Types::VectorX<prec> &data,
     indexType numberComponents, std::string name) {
-  auto geoElem = pointers.getGeometryData()->getVolume(this->volume);
-  geoElem->projectDataToParaviewVertices(pointers, paraviewAdapter, mainMesh,
-                                         subMesh, order, IntegrationPt, data,
-                                         numberComponents, name);
+  m_volume_runtime->projectDataToParaviewVertices(
+      paraviewAdapter, mainMesh, subMesh, order, IntegrationPt, data,
+      numberComponents, name);
 }
 
-} // namespace HierAMuS
+} // namespace HierAMuS::FiniteElement

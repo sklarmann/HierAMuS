@@ -7,8 +7,6 @@
 #include "MatrixTypes.h"
 #include "solver/Homogenization/HomogeniztaionBase.h"
 #include "solver/StaticSolutionState.h"
-#include <forwarddeclaration.h>
-
 
 
 #include <memory>

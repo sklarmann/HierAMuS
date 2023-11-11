@@ -6,22 +6,20 @@
 
 #pragma once
 
-#include <forwarddeclaration.h>
+#include "ElementTypes.h"
+#include "datatypes.h"
 
-#include "finiteElements/GenericFiniteElement.h"
-#include "finiteElements/LinearPrism.h"
-#include "finiteElements/beamInterfaceElement2D.h"
-#include "finiteElements/Edge.h"
-#include "finiteElements/Face.h"
-#include "finiteElements/FaceConstraint.h"
-#include "finiteElements/Volume.h"
-#include "finiteElements/VolumeConstraint.h"
-#include "finiteElements/beamInterfaceElement3D.h"
-#include <geometry/GeometryData.h>
 #include <iostream>
 #include <vector>
+#include <memory>
+
+namespace HierAMuS {
+class PointerCollection;
+}
 
 namespace HierAMuS::FiniteElement {
+
+class GenericFiniteElement;
 
 /**
  * @brief List containing the finite Elements.
@@ -55,32 +53,25 @@ public:
    * @return A Pointer to the finite element with number "number" as a
    * GenericFiniteElement pointer.
    */
-  auto getElement(indexType number) -> GenericFiniteElement *;
+  auto getElement(PointerCollection & pointers, indexType number) -> GenericFiniteElement *;
   /**
    * @brief Gets the total number of finite elements.
    *
    * @return Returns the total number of finite elements as indexType.
    */
-  auto getNumberOfElements() -> indexType {
-    indexType num;
-    num = static_cast<indexType>(this->elementIndex.size());
-    return num;
-  };
+  auto getNumberOfElements() -> indexType;
+
 
   void setDegreesOfFreedom(PointerCollection& pointers);
 
+  void print(PointerCollection &pointers);
+
 private:
-  std::vector<indexType> elementIndex;
-  std::vector<Elementtypes> elementTypes;
 
-  std::vector<Edge> edgeElements;
-  std::vector<Face> faceElements;
-  std::vector<FaceConstraint> faceConstraintElements;
-  std::vector<Volume> volumeElements;
-  std::vector<VolumeConstraint> volumeConstraintElements;
-
-  std::vector<beamInterfaceElement2D> beamInterface2D;
-  std::vector<beamInterfaceElement3D> beamInterface3D;
-  std::vector<LinearPrism> linearPrisms;
+  std::vector<std::shared_ptr<GenericFiniteElement>> m_elements;
+  
+  //std::vector<beamInterfaceElement2D> beamInterface2D;
+  //std::vector<beamInterfaceElement3D> beamInterface3D;
+  //std::vector<LinearPrism> linearPrisms;
 };
 } // namespace HierAMuS

@@ -12,5 +12,7 @@ void HierAMuS::PropfunctionHandlerWrapper::registerFunctions() {
       .def("addFunction", &PropfunctionHandler::addFunction)
       .def("getTime", &PropfunctionHandler::getTime)
       .def("set_dt",&PropfunctionHandler::set_dt)
-      .def("print",&PropfunctionHandler::print);
+      .def("print", [](PropfunctionHandler &self, PointerCollection &pointers) {
+        self.print(pointers.getSPDLogger());
+      });
 }
